@@ -8,6 +8,8 @@ interface Product {
     name: string;
     price: number;
     categoryId: string;
+    isForSale?: boolean;
+    isStockControlled?: boolean;
 }
 
 interface Category {
@@ -119,7 +121,13 @@ export function PDV() {
         if (product) {
             setEditingProduct(product);
             // Defaulting toggles to true for existing products since they aren't returned currently, but ideally we'd load them
-            setProductForm({ name: product.name, price: formatCurrency(product.price), categoryId: product.categoryId, isForSale: true, isStockControlled: true });
+            setProductForm({
+                name: product.name,
+                price: formatCurrency(product.price.toFixed(2)),
+                categoryId: product.categoryId,
+                isForSale: product.isForSale ?? true,
+                isStockControlled: product.isStockControlled ?? true
+            });
         } else {
             setEditingProduct(null);
             setProductForm({ name: '', price: '', categoryId: allCategories[0]?.id || '1', isForSale: true, isStockControlled: true });
@@ -131,8 +139,13 @@ export function PDV() {
         e.preventDefault();
         try {
             if (editingProduct) {
-                // await api.put(`/products/${editingProduct.id}`, { ...productForm, price: parseFloat(productForm.price) });
-                // Note: Implement PUT on backend if needed, or update local state for now
+                await api.put(`/products/${editingProduct.id}`, {
+                    name: productForm.name,
+                    price: parseCurrency(productForm.price),
+                    categoryId: productForm.categoryId,
+                    isForSale: productForm.isForSale,
+                    isStockControlled: productForm.isStockControlled
+                });
             } else {
                 await api.post('/products', {
                     name: productForm.name,
