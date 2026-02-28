@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// MÓDULO 1: Gestão de Acesso e Assinaturas (SaaS)
+// ============================================================================
+
+model Tenant {
+  id           String   @id @default(uuid())
+  name         String   // Ex: Pastelaria da Virgínia
+  document     String?  // CNPJ ou CPF
+  phone        String?
+  address      String?
+  plan         Plan     @default(BASIC)
+  status       Status   @default(ACTIVE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relacionamentos (Isolamento de dados)
+  users        User[]
+  categories   Category[]
+  products     Product[]
+  orders       Order[]
+  inventory    InventoryTransaction[]
+  finances     FinancialTransaction[]
+
+  @@map("tenants")
+}
+
+enum Plan {
+  BASIC
+  PRO
+}
+
+enum Status {
+  ACTIVE
+  BLOCKED
+  CANCELED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(EMPLOYEE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders       Order[]  // Pedidos lançados/gerenciados por este usuário
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+enum Role {
+  SUPER_ADMIN // Dono do SaaS (geralmente não atrelado a tenant, gerenciado separadamente)
+  OWNER       // Proprietário do comércio
+  EMPLOYEE    // Caixa / Cozinha
+}
+
+// ============================================================================
+// MÓDULO 3: Estoque e Produtos
+// ============================================================================
+
+model Category {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  name         String   // Ex: Pastéis, Bebidas
+  products     Product[]
+
+  @@index([tenantId])
+  @@map("categories")
+}
+
+model Product {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id])
+  
+  name         String
+  price        Decimal  @db.Decimal(10, 2)
+  isStockControlled Boolean @default(true)
+  isForSale    Boolean  @default(true) // Diferencia insumos de produtos finais
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orderItems   OrderItem[]
+  // Relacionamentos para a Ficha Técnica
+  recipes      RecipeIngredient[] @relation("ProductRecipe")
+  ingredients  RecipeIngredient[] @relation("IngredientComponent")
+  inventory    InventoryTransaction[]
+
+  @@index([tenantId])
+  @@map("products")
+}
+
+model RecipeIngredient {
+  id             String   @id @default(uuid())
+  tenantId       String
+  productId      String   // Produto final vendido no PDV
+  product        Product  @relation("ProductRecipe", fields: [productId], references: [id])
+  ingredientId   String   // Ingrediente consumido
+  ingredient     Product  @relation("IngredientComponent", fields: [ingredientId], references: [id])
+  quantity       Decimal  @db.Decimal(10, 3) // Ex: 0.100 (100 gramas)
+
+  @@index([tenantId, productId])
+  @@map("recipe_ingredients")
+}
+
+model InventoryTransaction {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id])
+  
+  type         InventoryType // Entrada (Compra) ou Saída (Venda/Desperdício)
+  quantity     Decimal  @db.Decimal(10, 3)
+  reason       String?  // Ex: "Venda Pedido #1020", "Ajuste manual"
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId, productId])
+  @@map("inventory_transactions")
+}
+
+enum InventoryType {
+  IN
+  OUT
+}
+
+// ============================================================================
+// MÓDULO 2: Ponto de Venda (PDV) e Pedidos
+// ============================================================================
+
+model Order {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  
+  customerName String?  // Nome na comanda (opcional)
+  status       OrderStatus @default(QUEUE)
+  totalAmount  Decimal  @db.Decimal(10, 2)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items        OrderItem[]
+  financeTx    FinancialTransaction? // Ligação 1:1 com o fluxo de caixa
+
+  @@index([tenantId])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  QUEUE         // Na Fila
+  PREPARING     // Preparando na cozinha
+  COMPLETED     // Entregue / Concluído
+  CANCELED      // Cancelado
+}
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  tenantId     String
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id])
+  
+  quantity     Int
+  unitPrice    Decimal  @db.Decimal(10, 2)
+  notes        String?  // Ex: "Sem vinagrete"
+
+  @@index([tenantId, orderId])
+  @@map("order_items")
+}
+
+// ============================================================================
+// MÓDULO 4: Gestão Financeira
+// ============================================================================
+
+model FinancialTransaction {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  
+  orderId      String?  @unique // Opcional: só preenchido se a origem for uma venda do PDV
+  order        Order?   @relation(fields: [orderId], references: [id])
+  
+  type         TransactionType
+  category     String   // Ex: "Venda PDV", "Pagto Fornecedor", "Luz"
+  amount       Decimal  @db.Decimal(10, 2)
+  description  String?  // Opcional 
+  paidAt       DateTime // Data em que o dinheiro efetivamente entrou/saiu
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("financial_transactions")
+}
+
+enum TransactionType {
+  INCOME  // Receita
+  EXPENSE // Despesa
+}
