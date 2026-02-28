@@ -67,7 +67,7 @@ export class UserController {
             });
 
             // Mapeando a resposta pro frontend que espera status e lastLogin
-            const mappedTeam = team.map(member => ({
+            const mappedTeam = team.map((member: any) => ({
                 id: member.id,
                 name: member.name,
                 email: member.email,
@@ -120,6 +120,48 @@ export class UserController {
         } catch (error) {
             console.error('Erro ao convidar membro:', error);
             return res.status(500).json({ error: 'Erro interno ao convidar membro de equipe' });
+        }
+    }
+
+    async updateUser(req: Request, res: Response) {
+        try {
+            const tenantId = req.user?.tenantId as string;
+            const id = req.params.id as string;
+            const { name, role } = req.body;
+
+            const targetUser = await prisma.user.findFirst({ where: { id, tenantId } });
+            if (!targetUser) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+            const updatedUser = await prisma.user.update({
+                where: { id },
+                data: { name, role: role || undefined }
+            });
+
+            return res.json(updatedUser);
+        } catch (error) {
+            console.error('Erro ao atualizar usuário:', error);
+            return res.status(500).json({ error: 'Erro ao atualizar usuário' });
+        }
+    }
+
+    async deleteUser(req: Request, res: Response) {
+        try {
+            const tenantId = req.user?.tenantId as string;
+            const id = req.params.id as string;
+
+            const targetUser = await prisma.user.findFirst({ where: { id, tenantId } });
+            if (!targetUser) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+            // Impede que o owner principal se exclua aqui (lógica avançada seria verificar o role)
+            if (targetUser.role === 'OWNER') {
+                return res.status(403).json({ error: 'Não é possível excluir o proprietário' });
+            }
+
+            await prisma.user.delete({ where: { id } });
+            return res.status(204).send();
+        } catch (error) {
+            console.error('Erro ao excluir usuário:', error);
+            return res.status(500).json({ error: 'Erro ao excluir usuário' });
         }
     }
 }

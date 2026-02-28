@@ -12,5 +12,7 @@ routes.get('/profile', userController.getProfile);
 routes.put('/profile', userController.updateProfile);
 routes.get('/', userController.getTeam);
 routes.post('/invite', userController.inviteUser);
+routes.put('/:id', userController.updateUser);
+routes.delete('/:id', userController.deleteUser);
 
 export default routes;
