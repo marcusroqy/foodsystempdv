@@ -91,11 +91,11 @@ export function Team() {
                 }
                 handleCloseModal();
             } else {
-                // Convidar novo e abrir wpp logo para evitar bloqueio do Safari
-                const message = `Olá ${formData.name}, sua conta no sistema FoodSaaS foi criada como ${ROLE_LABELS[formData.role as keyof typeof ROLE_LABELS]}.\n\nPara acessar, entre no link e preencha a tela de LOGIN (NÃO clique em cadastrar):\n🔗 https://foodsystempdv.vercel.app/login\n\nSeu E-mail de acesso: ${formData.email}\nSua Senha provisória: 123456`;
-                const whatsappUrl = `https://wa.me/${formData.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-                // Importante: window.open ANTES de await da API para nao ser bloqueado
-                window.open(whatsappUrl, '_blank');
+                // Pre-abre a janela do WhatsApp em branco para o Safari não bloquear
+                let whatsappWindow: Window | null = null;
+                if (formData.phone) {
+                    whatsappWindow = window.open('about:blank', '_blank');
+                }
 
                 try {
                     await api.post('/users/invite', {
@@ -104,11 +104,21 @@ export function Team() {
                         phone: formData.phone,
                         role: formData.role
                     });
+
+                    // Se a API funcionou, redireciona a aba em branco pro WhatsApp
+                    if (whatsappWindow && formData.phone) {
+                        const message = `Olá ${formData.name}, sua conta no sistema FoodSaaS foi criada como ${ROLE_LABELS[formData.role as keyof typeof ROLE_LABELS]}.\n\nPara acessar, entre no link e preencha a tela de LOGIN (NÃO clique em cadastrar):\n🔗 https://foodsystempdv.vercel.app/login\n\nSeu E-mail de acesso: ${formData.email}\nSua Senha provisória: 123456`;
+                        // Remove nao-digitos do telefone
+                        const cleanPhone = formData.phone.replace(/\\D/g, '');
+                        whatsappWindow.location.href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+                    }
+
                     // Recarrega lista
                     fetchTeam();
                     handleCloseModal();
                 } catch (e: any) {
                     console.log('API call falhou: ', e);
+                    if (whatsappWindow) whatsappWindow.close(); // Fecha a aba se deu erro
                     alert(e.response?.data?.error || 'Erro ao convidar usuário. Verifique a conexão ou se o email já existe.');
                 }
             }
