@@ -91,7 +91,7 @@ export function Team() {
                 handleCloseModal();
             } else {
                 // Convidar novo e abrir wpp logo para evitar bloqueio do Safari
-                const message = `Olá ${formData.name}, você foi convidado para acessar o sistema FoodSaaS como ${ROLE_LABELS[formData.role as keyof typeof ROLE_LABELS]}. Acesse o link: https://foodsystempdv.vercel.app/login e use seu email ${formData.email} ou este número para o primeiro acesso.`;
+                const message = `Olá ${formData.name}, sua conta no sistema FoodSaaS foi criada como ${ROLE_LABELS[formData.role as keyof typeof ROLE_LABELS]}.\n\nPara acessar, entre no link e preencha a tela de LOGIN (NÃO clique em cadastrar):\n🔗 https://foodsystempdv.vercel.app/login\n\nSeu E-mail de acesso: ${formData.email}\nSua Senha provisória: 123456`;
                 const whatsappUrl = `https://wa.me/${formData.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
                 // Importante: window.open ANTES de await da API para nao ser bloqueado
                 window.open(whatsappUrl, '_blank');
@@ -245,8 +245,8 @@ export function Team() {
                                     <input type="tel" required={!editingMember} value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all" placeholder="(00) 90000-0000" />
                                 </div>
                                 <div className="col-span-2 md:col-span-1">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">E-mail (Opcional)</label>
-                                    <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all" placeholder="email@empresa.com" disabled={!!editingMember} />
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">E-mail (Para Login)</label>
+                                    <input type="email" required={!editingMember} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all" placeholder="email@empresa.com" disabled={!!editingMember} />
                                 </div>
                             </div>
 
