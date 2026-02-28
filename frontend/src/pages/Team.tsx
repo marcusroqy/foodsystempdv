@@ -38,7 +38,23 @@ export function Team() {
     const [team, setTeam] = useState<Employee[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isMenuOpenId, setIsMenuOpenId] = useState<string | null>(null);
+    const [editingMember, setEditingMember] = useState<Employee | null>(null);
     const [formData, setFormData] = useState({ name: '', phone: '', email: '', role: 'CASHIER' });
+
+    useEffect(() => {
+        if (editingMember) {
+            setFormData({ name: editingMember.name, phone: '', email: editingMember.email, role: editingMember.role });
+        } else {
+            setFormData({ name: '', phone: '', email: '', role: 'CASHIER' });
+        }
+    }, [editingMember]);
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingMember(null);
+        setIsMenuOpenId(null);
+    };
 
     const fetchTeam = async () => {
         try {
@@ -55,39 +71,59 @@ export function Team() {
         fetchTeam();
     }, []);
 
-    const handleInvite = async (e: React.FormEvent) => {
+    const handleInviteOrUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            // Em um sistema real envia para a API, mas para este MVP mockado
-            // já geramos o link do WhatsApp para o cliente
-            const message = `Olá ${formData.name}, você foi convidado para acessar o sistema FoodSaaS como ${ROLE_LABELS[formData.role as keyof typeof ROLE_LABELS]}. Acesse o link: http://localhost:5173/login e use seu email ${formData.email} ou este número para o primeiro acesso.`;
-            const whatsappUrl = `https://wa.me/${formData.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-
-            // Tenta salvar no backend (ignora em dev se nao existir)
-            try {
-                await api.post('/users/invite', {
+            if (editingMember) {
+                // Atualizar usuário
+                const response = await api.put(`/users/${editingMember.id}`, {
                     name: formData.name,
-                    email: formData.email,
-                    phone: formData.phone,
                     role: formData.role
                 });
-            } catch (e) { console.log('Backend not fully ready for invite, opening wpp mockup') }
+                setTeam(team.map(m => m.id === editingMember.id ? { ...m, name: response.data.name, role: response.data.role } : m));
 
-            window.open(whatsappUrl, '_blank');
+                // Abre wpp se enviou telefone para reenviar acesso
+                if (formData.phone) {
+                    const message = `Olá ${formData.name}, o seu acesso no sistema FoodSaaS foi atualizado para ${ROLE_LABELS[formData.role as keyof typeof ROLE_LABELS]}. Link: https://foodsystempdv.vercel.app/login`;
+                    const whatsappUrl = `https://wa.me/${formData.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+                    window.open(whatsappUrl, '_blank');
+                }
+                handleCloseModal();
+            } else {
+                // Convidar novo e abrir wpp logo para evitar bloqueio do Safari
+                const message = `Olá ${formData.name}, você foi convidado para acessar o sistema FoodSaaS como ${ROLE_LABELS[formData.role as keyof typeof ROLE_LABELS]}. Acesse o link: https://foodsystempdv.vercel.app/login e use seu email ${formData.email} ou este número para o primeiro acesso.`;
+                const whatsappUrl = `https://wa.me/${formData.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+                // Importante: window.open ANTES de await da API para nao ser bloqueado
+                window.open(whatsappUrl, '_blank');
 
-            // Simula adição no front
-            const newEmployee: Employee = {
-                id: `emp${Date.now()}`,
-                name: formData.name,
-                email: formData.email || formData.phone,
-                role: formData.role as Employee['role'],
-                status: 'INVITED'
-            };
-            setTeam([...team, newEmployee]);
-            setIsModalOpen(false);
-            setFormData({ name: '', email: '', phone: '', role: 'CASHIER' });
-        } catch (error) {
-            alert('Erro ao processar convite.');
+                try {
+                    await api.post('/users/invite', {
+                        name: formData.name,
+                        email: formData.email || undefined,
+                        phone: formData.phone,
+                        role: formData.role
+                    });
+                } catch (e) {
+                    console.log('API call falhou, mas wpp já foi aberto. Ignorando no MVP.', e);
+                }
+
+                // Recarrega lista
+                fetchTeam();
+                handleCloseModal();
+            }
+        } catch (error: any) {
+            alert(error.response?.data?.error || 'Erro ao processar requisição.');
+        }
+    };
+
+    const handleDelete = async (id: string, name: string) => {
+        if (!window.confirm(`Tem certeza que deseja remover ${name}?`)) return;
+        try {
+            await api.delete(`/users/${id}`);
+            setTeam(team.filter(m => m.id !== id));
+            setIsMenuOpenId(null);
+        } catch (error: any) {
+            alert(error.response?.data?.error || 'Erro ao remover usuário.');
         }
     };
 
@@ -165,9 +201,17 @@ export function Team() {
                                         )}
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button onClick={() => alert(`Feature: Opções de ${member.name} em breve!`)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors">
-                                            <MoreVertical className="w-5 h-5" />
-                                        </button>
+                                        <div className="relative">
+                                            <button onClick={() => setIsMenuOpenId(isMenuOpenId === member.id ? null : member.id)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors">
+                                                <MoreVertical className="w-5 h-5" />
+                                            </button>
+                                            {isMenuOpenId === member.id && (
+                                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-10 text-left overflow-hidden">
+                                                    <button onClick={() => { setEditingMember(member); setIsMenuOpenId(null); setIsModalOpen(true); }} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left font-medium">Editar Perfil</button>
+                                                    <button onClick={() => handleDelete(member.id, member.name)} className="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left font-medium">Remover Usuário</button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -183,14 +227,14 @@ export function Team() {
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                             <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                                 <UserPlus className="w-5 h-5 text-primary-500" />
-                                Convidar Novo Membro
+                                {editingMember ? 'Editar Colaborador' : 'Convidar Novo Membro'}
                             </h2>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleInvite} className="p-6 space-y-5">
+                        <form onSubmit={handleInviteOrUpdate} className="p-6 space-y-5">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Colaborador</label>
@@ -198,11 +242,11 @@ export function Team() {
                                 </div>
                                 <div className="col-span-2 md:col-span-1">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
-                                    <input type="tel" required value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all" placeholder="(00) 90000-0000" />
+                                    <input type="tel" required={!editingMember} value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all" placeholder="(00) 90000-0000" />
                                 </div>
                                 <div className="col-span-2 md:col-span-1">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">E-mail (Opcional)</label>
-                                    <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all" placeholder="email@empresa.com" />
+                                    <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all" placeholder="email@empresa.com" disabled={!!editingMember} />
                                 </div>
                             </div>
 
@@ -238,9 +282,9 @@ export function Team() {
                             </div>
 
                             <div className="pt-4 flex gap-3 border-t border-gray-100">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-gray-600 bg-white border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
+                                <button type="button" onClick={handleCloseModal} className="px-5 py-2.5 text-gray-600 bg-white border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
                                 <button type="submit" className="flex-1 px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold hover:bg-[#128C7E] transition-colors shadow-md shadow-[#25D366]/20 flex justify-center items-center gap-2">
-                                    Enviar Convite via WhatsApp
+                                    {editingMember ? 'Atualizar Perfil' : 'Enviar Convite via WhatsApp'}
                                 </button>
                             </div>
                         </form>
