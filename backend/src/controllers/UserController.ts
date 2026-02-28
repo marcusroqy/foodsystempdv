@@ -127,14 +127,21 @@ export class UserController {
         try {
             const tenantId = req.user?.tenantId as string;
             const id = req.params.id as string;
-            const { name, role } = req.body;
+            const { name, email, role } = req.body;
 
             const targetUser = await prisma.user.findFirst({ where: { id, tenantId } });
             if (!targetUser) return res.status(404).json({ error: 'Usuário não encontrado' });
 
+            if (email && email !== targetUser.email) {
+                const existingEmail = await prisma.user.findUnique({ where: { email } });
+                if (existingEmail) {
+                    return res.status(400).json({ error: 'Este e-mail já está em uso por outro usuário.' });
+                }
+            }
+
             const updatedUser = await prisma.user.update({
                 where: { id },
-                data: { name, role: role || undefined }
+                data: { name, email: email || undefined, role: role || undefined }
             });
 
             return res.json(updatedUser);
