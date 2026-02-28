@@ -103,13 +103,13 @@ export function Team() {
                         phone: formData.phone,
                         role: formData.role
                     });
-                } catch (e) {
-                    console.log('API call falhou, mas wpp já foi aberto. Ignorando no MVP.', e);
+                    // Recarrega lista
+                    fetchTeam();
+                    handleCloseModal();
+                } catch (e: any) {
+                    console.log('API call falhou: ', e);
+                    alert(e.response?.data?.error || 'Erro ao convidar usuário. Verifique a conexão ou se o email já existe.');
                 }
-
-                // Recarrega lista
-                fetchTeam();
-                handleCloseModal();
             }
         } catch (error: any) {
             alert(error.response?.data?.error || 'Erro ao processar requisição.');
@@ -150,14 +150,14 @@ export function Team() {
             </div>
 
             {/* Listagem de Usuários */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-visible min-h-[60vh]">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                         <Users className="w-5 h-5 text-gray-400" /> Equipe ({team.length})
                     </h2>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-visible pb-32">
                     <table className="w-full text-left text-sm text-gray-600">
                         <thead className="text-xs uppercase bg-white text-gray-500 border-b border-gray-100">
                             <tr>
