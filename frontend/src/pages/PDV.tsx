@@ -33,7 +33,7 @@ export function PDV() {
     // ==========================================
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [productForm, setProductForm] = useState({ name: '', price: '', categoryId: '1' });
+    const [productForm, setProductForm] = useState({ name: '', price: '', categoryId: '1', isForSale: true, isStockControlled: true });
 
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -118,10 +118,11 @@ export function PDV() {
     const openProductModal = (product?: Product) => {
         if (product) {
             setEditingProduct(product);
-            setProductForm({ name: product.name, price: formatCurrency(product.price), categoryId: product.categoryId });
+            // Defaulting toggles to true for existing products since they aren't returned currently, but ideally we'd load them
+            setProductForm({ name: product.name, price: formatCurrency(product.price), categoryId: product.categoryId, isForSale: true, isStockControlled: true });
         } else {
             setEditingProduct(null);
-            setProductForm({ name: '', price: '', categoryId: allCategories[0]?.id || '1' });
+            setProductForm({ name: '', price: '', categoryId: allCategories[0]?.id || '1', isForSale: true, isStockControlled: true });
         }
         setIsProductModalOpen(true);
     };
@@ -136,7 +137,9 @@ export function PDV() {
                 await api.post('/products', {
                     name: productForm.name,
                     price: parseCurrency(productForm.price),
-                    categoryId: productForm.categoryId
+                    categoryId: productForm.categoryId,
+                    isForSale: productForm.isForSale,
+                    isStockControlled: productForm.isStockControlled
                 });
             }
             fetchDados(); // Atualiza a lista
@@ -378,6 +381,7 @@ export function PDV() {
                                             value={productForm.price} onChange={e => setProductForm({ ...productForm, price: formatCurrency(e.target.value) })}
                                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                                             placeholder="R$ 0,00"
+                                            disabled={!productForm.isForSale} // Disable price if not for sale
                                         />
                                     </div>
                                     <div className="flex gap-2 items-end">
@@ -401,6 +405,37 @@ export function PDV() {
                                             <Plus className="w-5 h-5" />
                                         </button>
                                     </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 pt-2">
+                                    <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={productForm.isForSale}
+                                            onChange={(e) => {
+                                                const checked = e.target.checked;
+                                                setProductForm({ ...productForm, isForSale: checked, price: checked ? productForm.price : '0,00' });
+                                            }}
+                                            className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium text-gray-900">Vender no PDV</span>
+                                            <span className="text-xs text-gray-500">Aparece para vendas</span>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={productForm.isStockControlled}
+                                            onChange={(e) => setProductForm({ ...productForm, isStockControlled: e.target.checked })}
+                                            className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium text-gray-900">Controlar Estoque</span>
+                                            <span className="text-xs text-gray-500">Aba de inventário</span>
+                                        </div>
+                                    </label>
                                 </div>
 
                                 <div className="pt-4 flex gap-3">

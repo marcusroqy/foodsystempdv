@@ -7,9 +7,9 @@ export class InventoryController {
             const tenantId = req.user?.tenantId;
             if (!tenantId) return res.status(401).json({ error: 'Tenant missing' });
 
-            // Busca produtos com transações
+            // Busca produtos que SÃO controlados no estoque
             const products = await prisma.product.findMany({
-                where: { tenantId },
+                where: { tenantId, isStockControlled: true },
                 include: { category: true, inventory: true }
             });
 

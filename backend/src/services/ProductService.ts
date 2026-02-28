@@ -3,8 +3,14 @@ import { getTenantPrisma } from '../repositories/prisma';
 export class ProductService {
     async listProducts(tenantId: string, all: boolean = false) {
         const prisma = getTenantPrisma(tenantId);
+
+        let whereClause: any = { tenantId };
+        if (!all) {
+            whereClause.isForSale = true;
+        }
+
         return prisma.product.findMany({
-            where: all ? {} : { isForSale: true },
+            where: whereClause,
             include: { category: true }
         });
     }

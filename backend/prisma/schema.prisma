@@ -62,9 +62,16 @@ model User {
 }
 
 enum Role {
-  SUPER_ADMIN // Dono do SaaS (geralmente não atrelado a tenant, gerenciado separadamente)
-  OWNER       // Proprietário do comércio
-  EMPLOYEE    // Caixa / Cozinha
+  SUPER_ADMIN
+  OWNER
+  MANAGER
+  ADMIN
+  CASHIER
+  WAITER
+  KITCHEN
+  DELIVERY
+  STOCK
+  EMPLOYEE
 }
 
 // ============================================================================
