@@ -73,8 +73,14 @@ export function Team() {
 
     const handleInviteOrUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
+        let whatsappWindow: Window | null = null;
         try {
             if (editingMember) {
+                // Pre-abre a janela do WhatsApp em branco para o Safari não bloquear
+                if (formData.phone) {
+                    whatsappWindow = window.open('about:blank', '_blank');
+                }
+
                 // Atualizar usuário
                 const response = await api.put(`/users/${editingMember.id}`, {
                     name: formData.name,
@@ -84,15 +90,14 @@ export function Team() {
                 setTeam(team.map(m => m.id === editingMember.id ? { ...m, name: response.data.name, email: response.data.email, role: response.data.role } : m));
 
                 // Abre wpp se enviou telefone para reenviar acesso
-                if (formData.phone) {
+                if (whatsappWindow && formData.phone) {
                     const message = `Olá ${formData.name}, o seu acesso no sistema FoodSaaS foi atualizado para ${ROLE_LABELS[formData.role as keyof typeof ROLE_LABELS]}. Link: https://foodsystempdv.vercel.app/login`;
-                    const whatsappUrl = `https://wa.me/${formData.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-                    window.open(whatsappUrl, '_blank');
+                    const cleanPhone = formData.phone.replace(/\D/g, '');
+                    whatsappWindow.location.href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
                 }
                 handleCloseModal();
             } else {
                 // Pre-abre a janela do WhatsApp em branco para o Safari não bloquear
-                let whatsappWindow: Window | null = null;
                 if (formData.phone) {
                     whatsappWindow = window.open('about:blank', '_blank');
                 }
@@ -123,7 +128,10 @@ export function Team() {
                 }
             }
         } catch (error: any) {
-            alert(error.response?.data?.error || 'Erro ao processar requisição.');
+            console.error('Erro geral no form:', error);
+            const errorMsg = error.response?.data?.error || `Falha de Rede/Script: ${error.message}`;
+            if (whatsappWindow) whatsappWindow.close();
+            alert(errorMsg);
         }
     };
 
