@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth, api } from '../contexts/AuthContext';
-import { ShoppingCart, LogOut, Plus, Minus, Trash2, Edit2, X, AlertCircle } from 'lucide-react';
+import { ShoppingCart, LogOut, Plus, Minus, Trash2, Edit2, X, AlertCircle, Loader2 } from 'lucide-react';
 import { formatCurrency, parseCurrency } from '../utils/format';
 
 interface Product {
@@ -190,8 +190,6 @@ export function PDV() {
         }
     };
 
-    if (loading) return <div className="h-screen flex text-primary-500 items-center justify-center font-bold">Carregando PDV...</div>;
-
     return (
         <div className="flex h-full md:h-screen bg-gray-100 font-sans relative overflow-hidden">
             {/* Esquerda: Categorias e Produtos */}
@@ -270,12 +268,17 @@ export function PDV() {
                             </div>
                         ))}
 
-                        {filteredProducts.length === 0 && (
+                        {loading ? (
+                            <div className="col-span-full py-20 flex flex-col items-center justify-center text-primary-500 gap-3">
+                                <Loader2 className="w-10 h-10 animate-spin" />
+                                <span className="font-medium">Carregando produtos...</span>
+                            </div>
+                        ) : filteredProducts.length === 0 ? (
                             <div className="col-span-full py-12 text-center text-gray-400 flex flex-col items-center">
                                 <AlertCircle className="w-12 h-12 mb-3 opacity-50" />
                                 <p>Nenhum produto cadastrado nesta categoria.</p>
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 </div>
             </div>

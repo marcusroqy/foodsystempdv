@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Package, ArrowUpRight, ArrowDownRight, Search, AlertTriangle, Activity, PieChart, PackageSearch, X, Edit2 } from 'lucide-react';
+import { Package, ArrowUpRight, ArrowDownRight, Search, AlertTriangle, Activity, PieChart, PackageSearch, X, Edit2, Loader2 } from 'lucide-react';
 import { api } from '../contexts/AuthContext';
 import { formatQuantity, parseQuantity } from '../utils/format';
 
@@ -109,8 +109,6 @@ export function Inventory() {
             alert('Erro ao editar item.');
         }
     };
-
-    if (loading) return <div className="h-screen flex text-primary-500 items-center justify-center font-bold">Carregando Estoque...</div>;
 
     return (
         <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
@@ -237,7 +235,16 @@ export function Inventory() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {filteredItems.map(item => (
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-primary-500">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <Loader2 className="w-8 h-8 animate-spin" />
+                                            <span className="font-medium">Carregando estoque...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : filteredItems.map(item => (
                                 <tr key={item.id} className="hover:bg-gray-50 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className="font-bold text-gray-900 mb-0.5">{item.name}</div>
@@ -274,7 +281,7 @@ export function Inventory() {
                                     </td>
                                 </tr>
                             ))}
-                            {filteredItems.length === 0 && (
+                            {!loading && filteredItems.length === 0 && (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
                                         Nenhum item encontrado na busca.
@@ -286,7 +293,12 @@ export function Inventory() {
 
                     {/* Mobile Cards */}
                     <div className="md:hidden flex flex-col divide-y divide-gray-100">
-                        {filteredItems.map(item => (
+                        {loading ? (
+                            <div className="p-12 flex flex-col items-center justify-center text-primary-500 gap-3">
+                                <Loader2 className="w-8 h-8 animate-spin" />
+                                <span className="text-sm font-medium">Carregando estoque...</span>
+                            </div>
+                        ) : filteredItems.map(item => (
                             <div key={item.id} className="p-4 flex flex-col gap-3">
                                 <div className="flex justify-between items-start">
                                     <div>
@@ -321,7 +333,7 @@ export function Inventory() {
                                 </div>
                             </div>
                         ))}
-                        {filteredItems.length === 0 && (
+                        {!loading && filteredItems.length === 0 && (
                             <div className="p-12 text-center text-gray-400">
                                 Nenhum item encontrado na busca.
                             </div>
