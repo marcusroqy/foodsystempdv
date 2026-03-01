@@ -4,14 +4,20 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Login } from './pages/Login';
 
 import { DashboardLayout } from './components/DashboardLayout';
+import { ForcePasswordChangeModal } from './components/ForcePasswordChangeModal';
 import { Inventory } from './pages/Inventory';
 import { Finance } from './pages/Finance';
 import { Team } from './pages/Team';
 
 const PrivateRoute = ({ children }: { children: ReactElement }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, mustChangePassword } = useAuth();
   if (isLoading) return <div className="h-screen flex items-center justify-center bg-gray-50 text-primary-500 font-bold">Carregando Sessão...</div>;
-  return isAuthenticated ? <DashboardLayout>{children}</DashboardLayout> : <Navigate to="/login" />;
+  return isAuthenticated ? (
+    <>
+      {mustChangePassword && <ForcePasswordChangeModal />}
+      <DashboardLayout>{children}</DashboardLayout>
+    </>
+  ) : <Navigate to="/login" />;
 };
 
 const DashboardRedirect = () => {

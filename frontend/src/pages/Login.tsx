@@ -22,7 +22,7 @@ export function Login() {
             setLoading(true);
             if (isLogin) {
                 const response = await api.post('/auth/login', { email, password });
-                login(response.data.token, response.data.user);
+                login(response.data.token, response.data.user, response.data.mustChangePassword);
                 navigate('/pdv');
             } else {
                 const response = await api.post('/auth/register', {

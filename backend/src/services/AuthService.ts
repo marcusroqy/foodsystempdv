@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../repositories/prisma';
 
 export class AuthService {
-    async login(email: string, passwordHash: string) {
+    async login(email: string, password: string) {
         // Usa instância raiz do prisma para login global, pois ainda não sabemos o tenantId
         const user = await prisma.user.findUnique({
             where: { email }
@@ -13,10 +13,12 @@ export class AuthService {
             throw new Error('Invalid credentials');
         }
 
-        const passwordMatch = await bcrypt.compare(passwordHash, user.passwordHash);
+        const passwordMatch = await bcrypt.compare(password, user.passwordHash);
         if (!passwordMatch) {
-            throw new Error('Invalid credentials');
+            throw new Error('Credenciais inválidas');
         }
+
+        const isDefaultPassword = await bcrypt.compare('123456', user.passwordHash);
 
         const token = jwt.sign(
             {
@@ -29,13 +31,15 @@ export class AuthService {
         );
 
         return {
-            token, user: {
+            user: {
                 id: user.id,
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                tenantId: user.tenantId
-            }
+                tenantId: user.tenantId,
+            },
+            token,
+            mustChangePassword: isDefaultPassword
         };
     }
 

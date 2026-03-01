@@ -18,10 +18,12 @@ interface User {
 interface AuthContextType {
     user: User | null;
     token: string | null;
-    login: (token: string, user: User) => void;
+    login: (token: string, user: User, mustChangePassword?: boolean) => void;
     logout: () => void;
     isAuthenticated: boolean;
     isLoading: boolean;
+    mustChangePassword: boolean;
+    setMustChangePassword: (val: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -30,6 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [mustChangePassword, setMustChangePassword] = useState(false);
 
     useEffect(() => {
         const storedToken = localStorage.getItem('@saas:token');
@@ -39,28 +42,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setToken(storedToken);
             setUser(JSON.parse(storedUser));
             api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+            const storedMustChange = localStorage.getItem('@saas:mustChangePassword');
+            if (storedMustChange === 'true') {
+                setMustChangePassword(true);
+            }
         }
         setIsLoading(false);
     }, []);
 
-    const login = (newToken: string, newUser: User) => {
+    const login = (newToken: string, newUser: User, changePass: boolean = false) => {
         localStorage.setItem('@saas:token', newToken);
         localStorage.setItem('@saas:user', JSON.stringify(newUser));
+        localStorage.setItem('@saas:mustChangePassword', String(changePass));
         setToken(newToken);
         setUser(newUser);
+        setMustChangePassword(changePass);
         api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
     };
 
     const logout = () => {
         localStorage.removeItem('@saas:token');
         localStorage.removeItem('@saas:user');
+        localStorage.removeItem('@saas:mustChangePassword');
         setToken(null);
         setUser(null);
+        setMustChangePassword(false);
         delete api.defaults.headers.common['Authorization'];
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token, isLoading }}>
+        <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token, isLoading, mustChangePassword, setMustChangePassword }}>
             {children}
         </AuthContext.Provider>
     );

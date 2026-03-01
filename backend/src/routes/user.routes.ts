@@ -10,6 +10,7 @@ routes.use(authMiddleware);
 // Profile e Team
 routes.get('/profile', userController.getProfile);
 routes.put('/profile', userController.updateProfile);
+routes.put('/profile/password', userController.changePassword);
 routes.get('/', userController.getTeam);
 routes.post('/invite', userController.inviteUser);
 routes.put('/:id', userController.updateUser);

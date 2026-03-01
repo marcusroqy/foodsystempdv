@@ -176,8 +176,8 @@ export function Team() {
                     </h2>
                 </div>
 
-                <div className="overflow-visible pb-32">
-                    <table className="w-full text-left text-sm text-gray-600">
+                <div className="overflow-x-auto pb-32 custom-scrollbar">
+                    <table className="w-full text-left text-sm text-gray-600 min-w-[700px]">
                         <thead className="text-xs uppercase bg-white text-gray-500 border-b border-gray-100">
                             <tr>
                                 <th className="px-6 py-4 font-semibold tracking-wider">Usuário</th>

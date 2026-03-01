@@ -51,6 +51,29 @@ export class UserController {
         }
     }
 
+    async changePassword(req: Request, res: Response) {
+        try {
+            const userId = req.user?.userId as string;
+            const { newPassword } = req.body;
+
+            if (!newPassword || newPassword.length < 6) {
+                return res.status(400).json({ error: 'Senha deve ter no mínimo 6 caracteres.' });
+            }
+
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+            await prisma.user.update({
+                where: { id: userId },
+                data: { passwordHash: hashedPassword }
+            });
+
+            return res.json({ message: 'Senha atualizada com sucesso' });
+        } catch (error) {
+            console.error('Erro ao mudar senha:', error);
+            return res.status(500).json({ error: 'Erro interno ao mudar senha' });
+        }
+    }
+
     async getTeam(req: Request, res: Response) {
         try {
             const tenantId = req.user?.tenantId as string;
