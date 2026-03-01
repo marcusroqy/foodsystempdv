@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Store, ShoppingCart, PackageSearch, PieChart, LogOut, Settings, Users } from 'lucide-react';
+import { Store, ShoppingCart, PackageSearch, PieChart, LogOut, Settings, Users, FileText } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
@@ -11,6 +11,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
     const menuItems = [
         { path: '/pdv', icon: ShoppingCart, label: 'Ponto de Venda' },
+        { path: '/historico', icon: FileText, label: 'Histórico' },
         { path: '/estoque', icon: PackageSearch, label: 'Estoque' },
         { path: '/financeiro', icon: PieChart, label: 'Financeiro' },
         { path: '/equipe', icon: Users, label: 'Equipe & Acessos' },

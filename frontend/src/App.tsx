@@ -8,6 +8,7 @@ import { ForcePasswordChangeModal } from './components/ForcePasswordChangeModal'
 import { Inventory } from './pages/Inventory';
 import { Finance } from './pages/Finance';
 import { Team } from './pages/Team';
+import { OrdersHistory } from './pages/OrdersHistory';
 
 const PrivateRoute = ({ children }: { children: ReactElement }) => {
   const { isAuthenticated, isLoading, mustChangePassword } = useAuth();
@@ -72,6 +73,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <Team />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/historico"
+        element={
+          <PrivateRoute>
+            <OrdersHistory />
           </PrivateRoute>
         }
       />
