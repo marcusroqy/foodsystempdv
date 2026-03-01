@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Package, ArrowUpRight, ArrowDownRight, Search, AlertTriangle, Activity, PieChart, PackageSearch, X, Edit2, Loader2 } from 'lucide-react';
+import { Package, ArrowUpRight, ArrowDownRight, Search, AlertTriangle, Activity, PieChart, PackageSearch, X, Edit2, Loader2, Plus } from 'lucide-react';
 import { api } from '../contexts/AuthContext';
 import { formatQuantity, parseQuantity } from '../utils/format';
 
@@ -27,6 +27,11 @@ export function Inventory() {
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editForm, setEditForm] = useState({ name: '', categoryId: '' });
+
+    // Create Modal State
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [createForm, setCreateForm] = useState({ name: '', categoryId: '' });
+
     const [dbCategories, setDbCategories] = useState<{ id: string, name: string }[]>([]);
 
     useEffect(() => {
@@ -107,6 +112,23 @@ export function Inventory() {
             window.location.reload();
         } catch (error) {
             alert('Erro ao editar item.');
+        }
+    };
+
+    const handleCreateItem = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await api.post('/products', {
+                name: createForm.name,
+                price: 0, // Insumos geralmente não têm preço de venda direta aqui
+                categoryId: createForm.categoryId,
+                isForSale: false,
+                isStockControlled: true
+            });
+            setIsCreateModalOpen(false);
+            window.location.reload();
+        } catch (error: any) {
+            alert(error.response?.data?.error || 'Erro ao criar item.');
         }
     };
 
@@ -197,6 +219,9 @@ export function Inventory() {
                     </h2>
 
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+                        <button onClick={() => { setCreateForm({ name: '', categoryId: '' }); setIsCreateModalOpen(true); }} className="bg-gray-900 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-800 font-medium transition-colors text-sm whitespace-nowrap shadow-sm">
+                            <Plus className="w-4 h-4" /> Novo Item
+                        </button>
                         <div className="relative w-full sm:w-64">
                             <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                             <input
@@ -410,6 +435,42 @@ export function Inventory() {
                             <div className="pt-4 flex gap-3">
                                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
                                 <button type="submit" className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors shadow-md shadow-primary-500/20 text-center">Salvar Alterações</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Criação de Item */}
+            {isCreateModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                <Package className="w-5 h-5 text-primary-500" /> Novo Insumo/Produto
+                            </h2>
+                            <button onClick={() => setIsCreateModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleCreateItem} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Item</label>
+                                <input type="text" required value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: Queijo Mussarela" />
+                                <p className="text-xs text-gray-500 mt-1">Este item será criado como insumo (não será vendido no PDV).</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                                <select required value={createForm.categoryId} onChange={e => setCreateForm({ ...createForm, categoryId: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white transition-all">
+                                    <option value="">Selecione uma categoria...</option>
+                                    {dbCategories.map(cat => (
+                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="pt-4 flex gap-3">
+                                <button type="button" onClick={() => setIsCreateModalOpen(false)} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
+                                <button type="submit" className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors shadow-md shadow-primary-500/20 text-center">Cadastrar Item</button>
                             </div>
                         </form>
                     </div>
