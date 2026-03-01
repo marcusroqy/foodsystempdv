@@ -195,22 +195,22 @@ export function PDV() {
             {/* Esquerda: Categorias e Produtos */}
             <div className="flex-1 flex flex-col p-4 md:p-6 overflow-hidden">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-center mb-3 md:mb-6">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800">Ponto de Venda</h1>
-                        <p className="text-gray-500 text-sm mt-1">Olá, {user?.name || 'Operador'}</p>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 tracking-tight">Ponto de Venda</h1>
+                        <p className="hidden md:block text-gray-500 text-sm mt-1">Olá, {user?.name || 'Operador'}</p>
                     </div>
-                    <button onClick={logout} className="flex items-center gap-2 text-gray-500 hover:text-red-500 transition-colors">
+                    <button onClick={logout} className="hidden md:flex items-center gap-2 text-gray-500 hover:text-red-500 transition-colors">
                         <LogOut className="w-5 h-5" /> Sair
                     </button>
                 </div>
 
                 {/* Categorias e Botão de Novo Produto */}
-                <div className="flex justify-between items-center mb-6">
-                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide flex-1 pr-4">
+                <div className="flex justify-between items-center mb-4 md:mb-6">
+                    <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 scrollbar-hide flex-1 pr-2 md:pr-4">
                         <button
                             onClick={() => setSelectedCategory(null)}
-                            className={`px-5 py-2.5 rounded-full whitespace-nowrap font-medium transition-all ${selectedCategory === null
+                            className={`px-4 md:px-5 py-2 md:py-2.5 rounded-full text-sm md:text-base whitespace-nowrap font-medium transition-all ${selectedCategory === null
                                 ? 'bg-primary-500 text-white shadow-md'
                                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                                 }`}
@@ -221,7 +221,7 @@ export function PDV() {
                             <button
                                 key={cat.id}
                                 onClick={() => setSelectedCategory(cat.id)}
-                                className={`px-5 py-2.5 rounded-full whitespace-nowrap font-medium transition-all ${selectedCategory === cat.id
+                                className={`px-4 md:px-5 py-2 md:py-2.5 rounded-full text-sm md:text-base whitespace-nowrap font-medium transition-all ${selectedCategory === cat.id
                                     ? 'bg-primary-500 text-white shadow-md'
                                     : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                                     }`}
@@ -232,28 +232,29 @@ export function PDV() {
                     </div>
                     <button
                         onClick={() => openProductModal()}
-                        className="flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-full font-medium hover:bg-gray-800 transition-colors shadow-sm whitespace-nowrap shrink-0"
+                        className="flex items-center justify-center gap-2 bg-gray-900 text-white w-10 h-10 md:w-auto md:h-auto md:px-5 md:py-2.5 rounded-full font-medium hover:bg-gray-800 transition-colors shadow-sm shrink-0"
                     >
-                        <Plus className="w-5 h-5" /> Adicionar
+                        <Plus className="w-5 h-5 md:w-5 md:h-5" />
+                        <span className="hidden md:inline">Adicionar</span>
                     </button>
                 </div>
 
                 {/* Grade de Produtos */}
-                <div className="flex-1 overflow-y-auto pr-2">
-                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="flex-1 overflow-y-auto pb-24 md:pb-0 pr-1 md:pr-2 scrollbar-hide">
+                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
                         {filteredProducts.map(product => (
-                            <div key={product.id} className="relative group">
+                            <div key={product.id} className="relative group overflow-hidden">
                                 <button
                                     onClick={() => addToCart(product)}
-                                    className="w-full h-full bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-primary-200 transition-all flex flex-col items-center justify-center text-center active:scale-95"
+                                    className="w-full h-full bg-white p-3 md:p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-primary-200 transition-all flex flex-col items-center justify-center text-center active:scale-95"
                                 >
-                                    <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-primary-100 transition-colors">
-                                        <span className="text-2xl font-bold text-primary-600">
+                                    <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-50 rounded-full flex items-center justify-center mb-2 md:mb-3 group-hover:bg-primary-100 transition-colors">
+                                        <span className="text-xl md:text-2xl font-bold text-primary-600">
                                             {product.name.charAt(0)}
                                         </span>
                                     </div>
-                                    <h3 className="font-semibold text-gray-800 line-clamp-2">{product.name}</h3>
-                                    <p className="text-primary-600 font-bold mt-1">R$ {product.price.toFixed(2)}</p>
+                                    <h3 className="text-sm md:text-base font-semibold text-gray-800 line-clamp-2 leading-tight">{product.name}</h3>
+                                    <p className="text-primary-600 font-bold mt-1 text-[13px] md:text-base">R$ {product.price.toFixed(2)}</p>
                                 </button>
 
                                 {/* Ações de Edição e Exclusão (Apenas no Hover) */}
