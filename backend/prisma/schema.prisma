@@ -83,6 +83,7 @@ model Category {
   tenantId     String
   tenant       Tenant   @relation(fields: [tenantId], references: [id])
   name         String   // Ex: Pastéis, Bebidas
+  type         String   @default("MENU") // "MENU" ou "INVENTORY"
   products     Product[]
 
   @@index([tenantId])

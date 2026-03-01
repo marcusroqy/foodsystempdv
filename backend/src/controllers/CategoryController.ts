@@ -9,7 +9,9 @@ export class CategoryController {
             const tenantId = req.user?.tenantId;
             if (!tenantId) return res.status(401).json({ error: 'Tenant missing' });
 
-            const categories = await this.categoryService.listCategories(tenantId);
+            const type = req.query.type as string | undefined;
+
+            const categories = await this.categoryService.listCategories(tenantId, type);
             return res.json(categories);
         } catch (error: any) {
             return res.status(400).json({ error: error.message });
@@ -21,8 +23,8 @@ export class CategoryController {
             const tenantId = req.user?.tenantId;
             if (!tenantId) return res.status(401).json({ error: 'Tenant missing' });
 
-            const { name } = req.body;
-            const category = await this.categoryService.createCategory(tenantId, name);
+            const { name, type } = req.body;
+            const category = await this.categoryService.createCategory(tenantId, name, type);
             return res.status(201).json(category);
         } catch (error: any) {
             return res.status(400).json({ error: error.message });

@@ -49,7 +49,7 @@ export function PDV() {
     const fetchDados = async () => {
         try {
             const [catsRes, prodsRes, allProdsRes] = await Promise.all([
-                api.get('/categories'),
+                api.get('/categories?type=MENU'),
                 api.get('/products'),
                 api.get('/products?all=true')
             ]);
@@ -490,7 +490,7 @@ export function PDV() {
                                         if (e.key === 'Enter' && newCategoryName.trim()) {
                                             e.preventDefault();
                                             try {
-                                                await api.post('/categories', { name: newCategoryName.trim() });
+                                                await api.post('/categories', { name: newCategoryName.trim(), type: 'MENU' });
                                                 fetchDados();
                                                 setIsCategoryModalOpen(false);
                                                 setNewCategoryName('');
@@ -507,7 +507,7 @@ export function PDV() {
                                     onClick={async () => {
                                         if (newCategoryName.trim()) {
                                             try {
-                                                await api.post('/categories', { name: newCategoryName.trim() });
+                                                await api.post('/categories', { name: newCategoryName.trim(), type: 'MENU' });
                                                 fetchDados();
                                                 setIsCategoryModalOpen(false);
                                                 setNewCategoryName('');

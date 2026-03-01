@@ -34,28 +34,33 @@ export function Inventory() {
 
     const [dbCategories, setDbCategories] = useState<{ id: string, name: string }[]>([]);
 
+    // Category Modal State
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+
+    const fetchInventory = async () => {
+        try {
+            const response = await api.get('/inventory');
+            const catResponse = await api.get('/categories?type=INVENTORY');
+
+            setDbCategories(catResponse.data);
+
+            // Keep categoryId around for edits
+            const withCatIds = response.data.map((item: any) => ({
+                ...item,
+                categoryId: catResponse.data.find((c: any) => c.name === item.categoryName)?.id
+            }));
+            setItems(withCatIds);
+        } catch (err: any) {
+            console.error('Erro ao buscar estoque:', err);
+            alert('Erro ao carregar estoque: ' + (err.message || 'Desconhecido'));
+            setItems([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchInventory = async () => {
-            try {
-                const response = await api.get('/inventory');
-                const catResponse = await api.get('/categories');
-
-                setDbCategories(catResponse.data);
-
-                // Keep categoryId around for edits
-                const withCatIds = response.data.map((item: any) => ({
-                    ...item,
-                    categoryId: catResponse.data.find((c: any) => c.name === item.categoryName)?.id
-                }));
-                setItems(withCatIds);
-            } catch (err: any) {
-                console.error('Erro ao buscar estoque:', err);
-                alert('Erro ao carregar estoque: ' + (err.message || 'Desconhecido'));
-                setItems([]);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchInventory();
     }, []);
 
@@ -126,9 +131,21 @@ export function Inventory() {
                 isStockControlled: true
             });
             setIsCreateModalOpen(false);
-            window.location.reload();
+            fetchInventory();
         } catch (error: any) {
             alert(error.response?.data?.error || 'Erro ao criar item.');
+        }
+    };
+
+    const handleCreateCategory = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await api.post('/categories', { name: newCategoryName.trim(), type: 'INVENTORY' });
+            fetchInventory();
+            setIsCategoryModalOpen(false);
+            setNewCategoryName('');
+        } catch (error) {
+            alert('Erro ao criar categoria.');
         }
     };
 
@@ -425,12 +442,21 @@ export function Inventory() {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                                <select value={editForm.categoryId} onChange={e => setEditForm({ ...editForm, categoryId: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white transition-all">
-                                    <option value="">Selecione uma categoria...</option>
-                                    {dbCategories.map(cat => (
-                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                    ))}
-                                </select>
+                                <div className="flex gap-2">
+                                    <select value={editForm.categoryId} onChange={e => setEditForm({ ...editForm, categoryId: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white transition-all">
+                                        <option value="">Selecione uma categoria...</option>
+                                        {dbCategories.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setIsCategoryModalOpen(true); setNewCategoryName(''); }}
+                                        className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-medium hover:bg-gray-200 transition-colors whitespace-nowrap"
+                                    >
+                                        + Nova
+                                    </button>
+                                </div>
                             </div>
                             <div className="pt-4 flex gap-3">
                                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
@@ -461,16 +487,58 @@ export function Inventory() {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                                <select required value={createForm.categoryId} onChange={e => setCreateForm({ ...createForm, categoryId: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white transition-all">
-                                    <option value="">Selecione uma categoria...</option>
-                                    {dbCategories.map(cat => (
-                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                    ))}
-                                </select>
+                                <div className="flex gap-2">
+                                    <select required value={createForm.categoryId} onChange={e => setCreateForm({ ...createForm, categoryId: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white transition-all">
+                                        <option value="">Selecione uma categoria...</option>
+                                        {dbCategories.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setIsCategoryModalOpen(true); setNewCategoryName(''); }}
+                                        className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-medium hover:bg-gray-200 transition-colors whitespace-nowrap"
+                                    >
+                                        + Nova
+                                    </button>
+                                </div>
                             </div>
                             <div className="pt-4 flex gap-3">
                                 <button type="button" onClick={() => setIsCreateModalOpen(false)} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
                                 <button type="submit" className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors shadow-md shadow-primary-500/20 text-center">Cadastrar Item</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal para Nova Categoria de Estoque */}
+            {isCategoryModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h2 className="text-lg font-bold text-gray-800">Nova Categoria de Insumo</h2>
+                            <button onClick={() => setIsCategoryModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleCreateCategory} className="p-5 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Categoria</label>
+                                <input
+                                    type="text" required autoFocus
+                                    value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                                    placeholder="Ex: Embalagens, Bebidas..."
+                                />
+                            </div>
+                            <div className="pt-2 flex gap-3">
+                                <button type="button" onClick={() => setIsCategoryModalOpen(false)} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">
+                                    Cancelar
+                                </button>
+                                <button type="submit" className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg font-bold hover:bg-primary-600 transition-colors text-sm">
+                                    Criar Categoria
+                                </button>
                             </div>
                         </form>
                     </div>
