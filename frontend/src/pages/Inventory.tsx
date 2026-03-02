@@ -13,6 +13,7 @@ interface StockItem {
     status: 'GOOD' | 'LOW' | 'OUT';
     categoryName: string;
     categoryId?: string;
+    imageUrl?: string;
 }
 
 export function Inventory() {
@@ -26,11 +27,11 @@ export function Inventory() {
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editForm, setEditForm] = useState({ name: '', categoryId: '' });
+    const [editForm, setEditForm] = useState({ name: '', categoryId: '', imageUrl: '' });
 
     // Create Modal State
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [createForm, setCreateForm] = useState({ name: '', categoryId: '' });
+    const [createForm, setCreateForm] = useState({ name: '', categoryId: '', imageUrl: '' });
 
     const [dbCategories, setDbCategories] = useState<{ id: string, name: string }[]>([]);
 
@@ -102,7 +103,7 @@ export function Inventory() {
 
     const openEditModal = (item: StockItem) => {
         setSelectedItem(item);
-        setEditForm({ name: item.name, categoryId: item.categoryId || '' });
+        setEditForm({ name: item.name, categoryId: item.categoryId || '', imageUrl: item.imageUrl || '' });
         setIsEditModalOpen(true);
     };
 
@@ -111,7 +112,8 @@ export function Inventory() {
         try {
             await api.put(`/products/${selectedItem?.id}`, {
                 name: editForm.name,
-                categoryId: editForm.categoryId || null
+                categoryId: editForm.categoryId || null,
+                imageUrl: editForm.imageUrl || null
             });
             setIsEditModalOpen(false);
             window.location.reload();
@@ -127,6 +129,7 @@ export function Inventory() {
                 name: createForm.name,
                 price: 0, // Insumos geralmente não têm preço de venda direta aqui
                 categoryId: createForm.categoryId,
+                imageUrl: createForm.imageUrl || null,
                 isForSale: false,
                 isStockControlled: true
             });
@@ -236,7 +239,7 @@ export function Inventory() {
                     </h2>
 
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
-                        <button onClick={() => { setCreateForm({ name: '', categoryId: '' }); setIsCreateModalOpen(true); }} className="bg-gray-900 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-800 font-medium transition-colors text-sm whitespace-nowrap shadow-sm">
+                        <button onClick={() => { setCreateForm({ name: '', categoryId: '', imageUrl: '' }); setIsCreateModalOpen(true); }} className="bg-gray-900 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-800 font-medium transition-colors text-sm whitespace-nowrap shadow-sm">
                             <Plus className="w-4 h-4" /> Novo Item
                         </button>
                         <div className="relative w-full sm:w-64">
@@ -441,6 +444,10 @@ export function Inventory() {
                                 <input type="text" required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" />
                             </div>
                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem (Opcional)</label>
+                                <input type="url" value={editForm.imageUrl} onChange={e => setEditForm({ ...editForm, imageUrl: e.target.value })} placeholder="https://imgur.com/foto.jpg" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" />
+                            </div>
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
                                 <div className="flex gap-2">
                                     <select value={editForm.categoryId} onChange={e => setEditForm({ ...editForm, categoryId: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white transition-all">
@@ -484,6 +491,10 @@ export function Inventory() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Item</label>
                                 <input type="text" required value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: Queijo Mussarela" />
                                 <p className="text-xs text-gray-500 mt-1">Este item será criado como insumo (não será vendido no PDV).</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem (Opcional)</label>
+                                <input type="url" value={createForm.imageUrl} onChange={e => setCreateForm({ ...createForm, imageUrl: e.target.value })} placeholder="https://imgur.com/foto.jpg" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>

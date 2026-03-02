@@ -10,6 +10,7 @@ interface Product {
     categoryId: string;
     isForSale?: boolean;
     isStockControlled?: boolean;
+    imageUrl?: string;
 }
 
 interface Category {
@@ -45,7 +46,7 @@ export function PDV() {
     // ==========================================
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [productForm, setProductForm] = useState({ name: '', price: '', categoryId: '1', isForSale: true, isStockControlled: true });
+    const [productForm, setProductForm] = useState({ name: '', price: '', categoryId: '1', isForSale: true, isStockControlled: true, imageUrl: '' });
 
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -141,11 +142,12 @@ export function PDV() {
                 price: formatCurrency(product.price.toFixed(2)),
                 categoryId: product.categoryId,
                 isForSale: product.isForSale ?? true,
-                isStockControlled: product.isStockControlled ?? true
+                isStockControlled: product.isStockControlled ?? true,
+                imageUrl: product.imageUrl || ''
             });
         } else {
             setEditingProduct(null);
-            setProductForm({ name: '', price: '', categoryId: allCategories[0]?.id || '1', isForSale: true, isStockControlled: true });
+            setProductForm({ name: '', price: '', categoryId: allCategories[0]?.id || '1', isForSale: true, isStockControlled: true, imageUrl: '' });
         }
         setIsProductModalOpen(true);
     };
@@ -159,7 +161,8 @@ export function PDV() {
                     price: parseCurrency(productForm.price),
                     categoryId: productForm.categoryId,
                     isForSale: productForm.isForSale,
-                    isStockControlled: productForm.isStockControlled
+                    isStockControlled: productForm.isStockControlled,
+                    imageUrl: productForm.imageUrl || null
                 });
             } else {
                 await api.post('/products', {
@@ -167,7 +170,8 @@ export function PDV() {
                     price: parseCurrency(productForm.price),
                     categoryId: productForm.categoryId,
                     isForSale: productForm.isForSale,
-                    isStockControlled: productForm.isStockControlled
+                    isStockControlled: productForm.isStockControlled,
+                    imageUrl: productForm.imageUrl || null
                 });
             }
             fetchDados(); // Atualiza a lista
@@ -266,13 +270,19 @@ export function PDV() {
                             <div key={product.id} className="relative group overflow-hidden">
                                 <button
                                     onClick={() => addToCart(product)}
-                                    className="w-full h-full bg-white p-3 md:p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-primary-200 transition-all flex flex-col items-center justify-center text-center active:scale-95"
+                                    className="w-full h-full bg-white p-3 md:p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-primary-200 transition-all flex flex-col items-center justify-center text-center active:scale-95 group/card relative"
                                 >
-                                    <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-50 rounded-full flex items-center justify-center mb-2 md:mb-3 group-hover:bg-primary-100 transition-colors">
-                                        <span className="text-xl md:text-2xl font-bold text-primary-600">
-                                            {product.name.charAt(0)}
-                                        </span>
-                                    </div>
+                                    {product.imageUrl ? (
+                                        <div className="w-16 h-16 md:w-20 md:h-20 mb-2 md:mb-3 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
+                                            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-300" />
+                                        </div>
+                                    ) : (
+                                        <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-50 rounded-full flex flex-shrink-0 items-center justify-center mb-2 md:mb-3 group-hover:bg-primary-100 transition-colors">
+                                            <span className="text-xl md:text-2xl font-bold text-primary-600">
+                                                {product.name.charAt(0)}
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="flex-1 flex flex-col justify-between w-full mt-1">
                                         <h3 className="text-sm md:text-[15px] font-bold text-gray-800 line-clamp-2 leading-snug mb-1">{product.name}</h3>
                                         <p className="text-primary-600 font-black text-sm md:text-[17px]">R$ {product.price.toFixed(2)}</p>
@@ -409,6 +419,16 @@ export function PDV() {
                                         value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })}
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                                         placeholder="Ex: Pastel Especial"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem (Opcional)</label>
+                                    <input
+                                        type="url"
+                                        value={productForm.imageUrl} onChange={e => setProductForm({ ...productForm, imageUrl: e.target.value })}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+                                        placeholder="https://imgur.com/foto.jpg"
                                     />
                                 </div>
 
