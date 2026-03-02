@@ -29,12 +29,11 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                 <div>
                     {/* Logo Area */}
                     <div className="h-20 flex items-center gap-3 px-6 border-b border-gray-100 mb-6">
-                        <div className="bg-primary-500 text-white p-2 rounded-xl shadow-inner shadow-primary-700/50">
-                            <Store className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h2 className="font-bold text-gray-900 text-lg leading-tight tracking-tight">FoodSaaS</h2>
-                            <p className="text-xs text-primary-600 font-medium">Gestão Inteligente</p>
+                        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Store className="w-8 h-8 text-primary-500" />
+                                <h2 className="font-black text-gray-900 text-lg leading-tight tracking-tighter">FoodSystem</h2>
+                            </div>    <p className="text-xs text-primary-600 font-medium">Gestão Inteligente</p>
                         </div>
                     </div>
 

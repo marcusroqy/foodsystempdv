@@ -13,7 +13,8 @@ export class UserController {
                     id: true,
                     name: true,
                     email: true,
-                    role: true
+                    role: true,
+                    passwordHash: true
                 }
             });
 
@@ -21,7 +22,16 @@ export class UserController {
                 return res.status(404).json({ error: 'Usuário não encontrado' });
             }
 
-            return res.json(user);
+            // Check if user is still using the default '123456' password
+            const isDefaultPassword = await bcrypt.compare('123456', user.passwordHash);
+
+            return res.json({
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                mustChangePassword: isDefaultPassword
+            });
         } catch (error) {
             console.error('Erro ao buscar perfil do usuário:', error);
             return res.status(500).json({ error: 'Erro interno ao buscar perfil' });
@@ -113,7 +123,7 @@ export class UserController {
 
             // Se não enviou email, vai dar erro com UNIQUE do Prisma se colocar null,
             // então para evitar erros nesta sprint de MVP, vamos gerar um email fake caso falte.
-            const generatedEmail = email || `user_${Date.now()}@temp.foodsaas.com`;
+            const generatedEmail = email || `user_${Date.now()}@temp.foodsystem.com`;
 
             const existingUser = await prisma.user.findUnique({ where: { email: generatedEmail } });
             if (existingUser) {

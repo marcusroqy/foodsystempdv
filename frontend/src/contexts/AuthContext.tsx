@@ -48,19 +48,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [mustChangePassword, setMustChangePassword] = useState(false);
 
     useEffect(() => {
-        const storedToken = localStorage.getItem('@saas:token');
-        const storedUser = localStorage.getItem('@saas:user');
+        const checkSession = async () => {
+            const storedToken = localStorage.getItem('@saas:token');
+            const storedUser = localStorage.getItem('@saas:user');
 
-        if (storedToken && storedUser) {
-            setToken(storedToken);
-            setUser(JSON.parse(storedUser));
-            api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-            const storedMustChange = localStorage.getItem('@saas:mustChangePassword');
-            if (storedMustChange === 'true') {
-                setMustChangePassword(true);
+            if (storedToken && storedUser) {
+                setToken(storedToken);
+                setUser(JSON.parse(storedUser));
+                api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+
+                try {
+                    // Check aggressively if the user still uses default password
+                    const { data } = await api.get('/users/profile');
+                    if (data.mustChangePassword) {
+                        setMustChangePassword(true);
+                        localStorage.setItem('@saas:mustChangePassword', 'true');
+                    } else {
+                        setMustChangePassword(false);
+                        localStorage.setItem('@saas:mustChangePassword', 'false');
+                    }
+                } catch (e) {
+                    console.error('Erro validadando sessão de usuário:', e);
+                }
             }
-        }
-        setIsLoading(false);
+            setIsLoading(false);
+        };
+
+        checkSession();
     }, []);
 
     const login = (newToken: string, newUser: User, changePass: boolean = false) => {

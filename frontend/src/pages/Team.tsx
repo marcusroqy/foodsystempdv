@@ -91,7 +91,7 @@ export function Team() {
 
                 // Abre wpp se enviou telefone para reenviar acesso
                 if (whatsappWindow && formData.phone) {
-                    const message = `Olá ${formData.name}, o seu acesso no sistema FoodSaaS foi atualizado para ${ROLE_LABELS[formData.role as keyof typeof ROLE_LABELS]}. Link: https://foodsystempdv.vercel.app/login`;
+                    const message = `Olá ${formData.name}, o seu acesso no sistema FoodSystem foi atualizado para ${ROLE_LABELS[formData.role as keyof typeof ROLE_LABELS]}. Link: https://foodsystempdv.vercel.app/login`;
                     const cleanPhone = formData.phone.replace(/\D/g, '');
                     whatsappWindow.location.href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
                 }
@@ -112,9 +112,9 @@ export function Team() {
 
                     // Se a API funcionou, redireciona a aba em branco pro WhatsApp
                     if (whatsappWindow && formData.phone) {
-                        const message = `Olá ${formData.name}, sua conta no sistema FoodSaaS foi criada como ${ROLE_LABELS[formData.role as keyof typeof ROLE_LABELS]}.\n\nPara acessar, entre no link e preencha a tela de LOGIN (NÃO clique em cadastrar):\n🔗 https://foodsystempdv.vercel.app/login\n\nSeu E-mail de acesso: ${formData.email}\nSua Senha provisória: 123456`;
+                        const message = `Olá ${formData.name}, sua conta no sistema FoodSystem foi criada como ${ROLE_LABELS[formData.role as keyof typeof ROLE_LABELS]}.\n\nPara acessar, entre no link e preencha a tela de LOGIN (NÃO clique em cadastrar):\n🔗 https://foodsystempdv.vercel.app/login\n\nSeu E-mail de acesso: ${formData.email}\nSua Senha provisória: 123456`;
                         // Remove nao-digitos do telefone
-                        const cleanPhone = formData.phone.replace(/\\D/g, '');
+                        const cleanPhone = formData.phone.replace(/\D/g, '');
                         whatsappWindow.location.href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
                     }
 

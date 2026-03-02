@@ -12,10 +12,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg', 'pwa-icon.svg'],
       manifest: {
-        name: 'FoodSaaS - Gestão',
-        short_name: 'FoodSaaS',
+        name: 'FoodSystem - Gestão',
+        short_name: 'FoodSystem',
         description: 'Ponto de Venda e Gestão de Estoque',
-        theme_color: '#f97316',
+        theme_color: '#e11d48',
         background_color: '#f9fafb',
         display: 'standalone',
         icons: [
