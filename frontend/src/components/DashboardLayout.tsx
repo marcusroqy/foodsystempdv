@@ -9,13 +9,16 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
     const navigate = useNavigate();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+    const adminRoles = ['OWNER', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'];
+    const isAdmin = user?.role ? adminRoles.includes(user.role) : false;
+
     const menuItems = [
         { path: '/pdv', icon: ShoppingCart, label: 'Ponto de Venda' },
         { path: '/historico', icon: FileText, label: 'Histórico' },
         { path: '/cozinha', icon: ChefHat, label: 'Cozinha' },
         { path: '/estoque', icon: PackageSearch, label: 'Estoque' },
         { path: '/financeiro', icon: PieChart, label: 'Financeiro' },
-        { path: '/equipe', icon: Users, label: 'Equipe & Acessos' },
+        ...(isAdmin ? [{ path: '/equipe', icon: Users, label: 'Equipe & Acessos' }] : []),
     ];
 
     const handleLogout = () => {

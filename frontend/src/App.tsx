@@ -22,6 +22,22 @@ const PrivateRoute = ({ children }: { children: ReactElement }) => {
   ) : <Navigate to="/login" />;
 };
 
+const AdminRoute = ({ children }: { children: ReactElement }) => {
+  const { user, isAuthenticated, isLoading, mustChangePassword } = useAuth();
+  if (isLoading) return <div className="h-screen flex items-center justify-center bg-gray-50 text-primary-500 font-bold">Carregando Sessão...</div>;
+  if (!isAuthenticated) return <Navigate to="/login" />;
+
+  const adminRoles = ['OWNER', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'];
+  const isAdmin = user?.role ? adminRoles.includes(user.role) : false;
+
+  return isAdmin ? (
+    <>
+      {mustChangePassword && <ForcePasswordChangeModal />}
+      <DashboardLayout>{children}</DashboardLayout>
+    </>
+  ) : <Navigate to="/pdv" />;
+};
+
 const DashboardRedirect = () => {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <div className="h-screen flex items-center justify-center bg-gray-50 text-primary-500 font-bold">Carregando Sessão...</div>;
@@ -72,9 +88,9 @@ function AppRoutes() {
       <Route
         path="/equipe"
         element={
-          <PrivateRoute>
+          <AdminRoute>
             <Team />
-          </PrivateRoute>
+          </AdminRoute>
         }
       />
       <Route
