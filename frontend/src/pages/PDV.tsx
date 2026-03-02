@@ -26,7 +26,17 @@ export function PDV() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [allCategories, setAllCategories] = useState<Category[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
-    const [cart, setCart] = useState<CartItem[]>([]);
+    const [cart, setCart] = useState<CartItem[]>(() => {
+        const saved = localStorage.getItem('@saas:cart');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                return [];
+            }
+        }
+        return [];
+    });
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -41,6 +51,10 @@ export function PDV() {
     const [newCategoryName, setNewCategoryName] = useState('');
 
     const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+
+    useEffect(() => {
+        localStorage.setItem('@saas:cart', JSON.stringify(cart));
+    }, [cart]);
 
     useEffect(() => {
         fetchDados();
@@ -184,6 +198,7 @@ export function PDV() {
             await api.post('/orders', { items, customerName: 'Cliente Balcão' });
             alert('Pedido finalizado com sucesso e salvo no banco de dados!');
             setCart([]);
+            localStorage.removeItem('@saas:cart');
         } catch (err) {
             alert('Erro ao criar pedido. Tente novamente.');
             console.error(err);
