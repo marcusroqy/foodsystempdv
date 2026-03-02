@@ -18,11 +18,79 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const [isLoadingCompany, setIsLoadingCompany] = useState(false);
     const [isSavingCompany, setIsSavingCompany] = useState(false);
 
+    // Push notification states
+    const [isSubscribed, setIsSubscribed] = useState(false);
+    const [isPushSupported, setIsPushSupported] = useState(false);
+    const [isSubscribing, setIsSubscribing] = useState(false);
+
     useEffect(() => {
         if (isOpen && activeTab === 'company' && user?.role !== 'CASHIER' && user?.role !== 'KITCHEN') {
             loadCompanyData();
         }
+
+        if (isOpen) {
+            if ('serviceWorker' in navigator && 'PushManager' in window) {
+                setIsPushSupported(true);
+                checkSubscription();
+            }
+        }
     }, [isOpen, activeTab]);
+
+    const checkSubscription = async () => {
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            setIsSubscribed(!!subscription);
+        } catch (e) {
+            console.error('Error checking push subscription', e);
+        }
+    };
+
+    const urlBase64ToUint8Array = (base64String: string) => {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    };
+
+    const handleSubscribeToggle = async () => {
+        if (!isPushSupported) return alert('Notificações Push não são suportadas neste dispositivo/navegador.');
+
+        setIsSubscribing(true);
+        try {
+            const registration = await navigator.serviceWorker.ready;
+
+            if (isSubscribed) {
+                const subscription = await registration.pushManager.getSubscription();
+                if (subscription) await subscription.unsubscribe();
+                setIsSubscribed(false);
+            } else {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') throw new Error('Permissão negada.');
+
+                const publicVapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+                if (!publicVapidKey) throw new Error('Chave VAPID não configurada no frontend. (.env)');
+
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+                });
+
+                await api.post('/notifications/subscribe', { subscription });
+                setIsSubscribed(true);
+                alert('Notificações ativadas com sucesso!');
+            }
+        } catch (error: any) {
+            console.error('Erro na assinatura push', error);
+            alert('Não foi possível ativar as notificações: ' + error.message);
+        } finally {
+            setIsSubscribing(false);
+        }
+    };
 
     const loadCompanyData = async () => {
         try {
@@ -263,11 +331,48 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 </div>
                             )}
 
+                            {/* Aba: Notificações */}
+                            {activeTab === 'notifications' && (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                    <div>
+                                        <h3 className="text-2xl font-bold text-gray-900">Notificações</h3>
+                                        <p className="text-gray-500 mt-1">Configure alertas em tempo real para novos pedidos e status.</p>
+                                    </div>
+
+                                    <div className="p-6 border border-gray-200 rounded-2xl bg-white shadow-sm flex flex-col md:flex-row items-center gap-6 justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-14 h-14 rounded-full flex items-center justify-center shrink-0 ${isSubscribed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                                <Bell className="w-7 h-7" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-gray-900 text-lg">Notificações Nativas</h4>
+                                                <p className="text-sm text-gray-500 mt-1 max-w-sm">
+                                                    Receba alertas sonoros e mensagens na tela do dispositivo mesmo se o app estiver minimizado.
+                                                </p>
+                                                {!isPushSupported && (
+                                                    <p className="text-xs text-red-500 mt-2 font-semibold">
+                                                        ⚠️ Seu navegador ou dispositivo não suporta Push Web Native. Tente instalar o app (PWA) ou usar o Chrome/Safari atualizado.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={handleSubscribeToggle}
+                                            disabled={!isPushSupported || isSubscribing}
+                                            className={`px-6 py-2.5 rounded-xl font-bold flex shrink-0 items-center justify-center gap-2 transition-all ${isSubscribed ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-primary-500 text-white shadow-lg shadow-primary-500/20 hover:bg-primary-600'} disabled:opacity-50`}
+                                        >
+                                            {isSubscribing && <Loader2 className="w-4 h-4 animate-spin" />}
+                                            {isSubscribed ? 'Desativar Alertas' : 'Ativar Alertas'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Placeholders for others */}
-                            {(activeTab === 'notifications' || activeTab === 'billing') && (
+                            {activeTab === 'billing' && (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 flex flex-col items-center justify-center py-20 text-center">
                                     <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                                        {activeTab === 'notifications' ? <Bell className="w-10 h-10 text-gray-400" /> : <CreditCard className="w-10 h-10 text-gray-400" />}
+                                        <CreditCard className="w-10 h-10 text-gray-400" />
                                     </div>
                                     <h3 className="text-xl font-bold text-gray-900">Em Desenvolvimento</h3>
                                     <p className="text-gray-500 max-w-sm">Esta funcionalidade está sendo construída e estará disponível na próxima atualização do sistema.</p>

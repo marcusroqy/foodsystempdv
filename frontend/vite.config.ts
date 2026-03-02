@@ -9,6 +9,12 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        maximumFileSizeToCacheInBytes: 5000000
+      },
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg', 'pwa-icon.svg'],
       manifest: {
