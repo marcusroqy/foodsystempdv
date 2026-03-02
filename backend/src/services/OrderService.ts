@@ -1,4 +1,7 @@
 import { getTenantPrisma } from '../repositories/prisma';
+import { PushNotificationService } from './PushNotificationService';
+
+const notificationService = new PushNotificationService();
 
 export class OrderService {
     async listOrders(tenantId: string) {
@@ -114,15 +117,41 @@ export class OrderService {
             }
         }
 
+        // Send Notification to Kitchen
+        try {
+            await notificationService.sendNotificationToRole(tenantId, 'KITCHEN', {
+                title: '🛎️ Novo Pedido na Cozinha!',
+                body: `Pedido #${order.id.split('-')[0].toUpperCase()} - ${data.items.length} itens.`,
+                url: '/cozinha'
+            });
+        } catch (error) {
+            console.error('Failed to notify kitchen:', error);
+        }
+
         return order;
     }
 
     async updateOrderStatus(tenantId: string, id: string, status: 'QUEUE' | 'PREPARING' | 'COMPLETED' | 'CANCELED') {
         const prisma = getTenantPrisma(tenantId);
-        return prisma.order.update({
+        const order = await prisma.order.update({
             where: { id },
             data: { status }
         });
+
+        // Notify When Order is Completed
+        if (status === 'COMPLETED') {
+            try {
+                await notificationService.sendNotificationToRole(tenantId, 'CASHIER', {
+                    title: '✅ Pedido Pronto!',
+                    body: `O Pedido #${order.id.split('-')[0].toUpperCase()} já pode ser entregue.`,
+                    url: '/pdv'
+                });
+            } catch (error) {
+                console.error('Failed to notify cashier/waiter:', error);
+            }
+        }
+
+        return order;
     }
 
     async deleteOrder(tenantId: string, id: string) {

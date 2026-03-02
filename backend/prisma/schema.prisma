@@ -29,6 +29,7 @@ model Tenant {
   orders       Order[]
   inventory    InventoryTransaction[]
   finances     FinancialTransaction[]
+  pushSubs     PushSubscription[]
 
   @@map("tenants")
 }
@@ -56,6 +57,7 @@ model User {
   updatedAt    DateTime @updatedAt
 
   orders       Order[]  // Pedidos lançados/gerenciados por este usuário
+  pushSubs     PushSubscription[]
 
   @@index([tenantId])
   @@map("users")
@@ -224,4 +226,25 @@ model FinancialTransaction {
 enum TransactionType {
   INCOME  // Receita
   EXPENSE // Despesa
+}
+
+// ============================================================================
+// MÓDULO 5: Notificações
+// ============================================================================
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  endpoint  String
+  p256dh    String
+  auth      String
+  
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, userId])
+  @@map("push_subscriptions")
 }
