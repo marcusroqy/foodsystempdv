@@ -10,5 +10,6 @@ orderRouter.use(authMiddleware);
 orderRouter.get('/', orderController.list);
 orderRouter.post('/', orderController.create);
 orderRouter.patch('/:id/status', orderController.updateStatus);
+orderRouter.delete('/:id', orderController.delete);
 
 export default orderRouter;

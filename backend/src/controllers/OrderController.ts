@@ -44,4 +44,18 @@ export class OrderController {
             return res.status(400).json({ error: error.message });
         }
     };
+
+    delete = async (req: Request, res: Response) => {
+        try {
+            const tenantId = req.user?.tenantId;
+            if (!tenantId) return res.status(401).json({ error: 'Tenant missing' });
+
+            const id = req.params.id as string;
+            await this.orderService.deleteOrder(tenantId, id);
+
+            return res.status(204).send();
+        } catch (error: any) {
+            return res.status(400).json({ error: error.message });
+        }
+    };
 }

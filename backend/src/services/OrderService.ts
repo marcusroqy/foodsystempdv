@@ -124,4 +124,18 @@ export class OrderService {
             data: { status }
         });
     }
+
+    async deleteOrder(tenantId: string, id: string) {
+        const prisma = getTenantPrisma(tenantId);
+
+        // As long as Prisma `onDelete: Cascade` is set up correctly in the schema for Order items,
+        // deleting the parent order will delete its items.
+        // Also note: we are not reverting inventory transactions here. Since they were consumed,
+        // if the user deletes the order, they might need to do manual stock adjustment or
+        // we could implement complex reversal logic later. For now, simple deletion rules.
+
+        return prisma.order.delete({
+            where: { id, tenantId } // Ensure it specifically belongs to this tenant
+        });
+    }
 }
