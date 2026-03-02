@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth, api } from '../contexts/AuthContext';
-import { ShoppingCart, LogOut, Plus, Minus, Trash2, Edit2, X, AlertCircle, Loader2 } from 'lucide-react';
+import { ShoppingCart, LogOut, Plus, Minus, Trash2, Edit2, X, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { formatCurrency, parseCurrency } from '../utils/format';
 
 interface Product {
@@ -51,6 +51,7 @@ export function PDV() {
     const [newCategoryName, setNewCategoryName] = useState('');
 
     const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+    const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
     useEffect(() => {
         localStorage.setItem('@saas:cart', JSON.stringify(cart));
@@ -196,9 +197,13 @@ export function PDV() {
         try {
             const items = cart.map(c => ({ productId: c.id, quantity: c.quantity, unitPrice: c.price }));
             await api.post('/orders', { items, customerName: 'Cliente Balcão' });
-            alert('Pedido finalizado com sucesso e salvo no banco de dados!');
+
+            // Sucesso!
             setCart([]);
             localStorage.removeItem('@saas:cart');
+            setIsMobileCartOpen(false);
+            setIsSuccessModalOpen(true);
+
         } catch (err) {
             alert('Erro ao criar pedido. Tente novamente.');
             console.error(err);
@@ -538,6 +543,25 @@ export function PDV() {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Sucesso (Pedido Finalizado) */}
+            {isSuccessModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col items-center text-center p-8">
+                        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-[bounce_1s_ease-in-out]">
+                            <CheckCircle2 className="w-12 h-12 text-green-500" />
+                        </div>
+                        <h2 className="text-2xl font-black text-gray-900 mb-2">Pedido Realizado!</h2>
+                        <p className="text-gray-500 mb-8">A venda foi registrada com sucesso no sistema e já está no seu histórico.</p>
+                        <button
+                            onClick={() => setIsSuccessModalOpen(false)}
+                            className="w-full py-4 bg-gray-900 text-white rounded-xl font-bold text-lg hover:bg-gray-800 transition-colors shadow-lg active:scale-95"
+                        >
+                            Novo Pedido
+                        </button>
                     </div>
                 </div>
             )}
