@@ -15,7 +15,7 @@ export class ProductService {
         });
     }
 
-    async createProduct(tenantId: string, data: { name: string; price: number; categoryId?: string; isStockControlled?: boolean; isForSale?: boolean }) {
+    async createProduct(tenantId: string, data: { name: string; price: number; categoryId?: string; isStockControlled?: boolean; isForSale?: boolean; imageUrl?: string }) {
         const prisma = getTenantPrisma(tenantId);
         const newProduct = await prisma.product.create({
             data: {
@@ -24,7 +24,8 @@ export class ProductService {
                 price: data.price,
                 categoryId: data.categoryId,
                 isStockControlled: data.isStockControlled ?? true,
-                isForSale: data.isForSale ?? true
+                isForSale: data.isForSale ?? true,
+                imageUrl: data.imageUrl || null
             }
         });
 
@@ -50,7 +51,7 @@ export class ProductService {
         return newProduct;
     }
 
-    async updateProduct(tenantId: string, id: string, data: { name?: string; price?: number; categoryId?: string; isStockControlled?: boolean; isForSale?: boolean }) {
+    async updateProduct(tenantId: string, id: string, data: { name?: string; price?: number; categoryId?: string; isStockControlled?: boolean; isForSale?: boolean; imageUrl?: string }) {
         const prisma = getTenantPrisma(tenantId);
         return prisma.product.updateMany({
             where: { id, tenantId },
@@ -59,7 +60,8 @@ export class ProductService {
                 ...(data.price !== undefined && { price: data.price }),
                 ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
                 ...(data.isStockControlled !== undefined && { isStockControlled: data.isStockControlled }),
-                ...(data.isForSale !== undefined && { isForSale: data.isForSale })
+                ...(data.isForSale !== undefined && { isForSale: data.isForSale }),
+                ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl })
             }
         });
     }

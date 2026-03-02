@@ -23,8 +23,8 @@ export class ProductController {
             const tenantId = req.user?.tenantId;
             if (!tenantId) return res.status(401).json({ error: 'Tenant missing' });
 
-            const { name, price, categoryId, isStockControlled, isForSale } = req.body;
-            const product = await this.productService.createProduct(tenantId, { name, price, categoryId, isStockControlled, isForSale });
+            const { name, price, categoryId, isStockControlled, isForSale, imageUrl } = req.body;
+            const product = await this.productService.createProduct(tenantId, { name, price, categoryId, isStockControlled, isForSale, imageUrl });
             return res.status(201).json(product);
         } catch (error: any) {
             return res.status(400).json({ error: error.message });
@@ -37,9 +37,9 @@ export class ProductController {
             if (!tenantId) return res.status(401).json({ error: 'Tenant missing' });
 
             const id = req.params.id as string;
-            const { name, price, categoryId, isStockControlled, isForSale } = req.body;
+            const { name, price, categoryId, isStockControlled, isForSale, imageUrl } = req.body;
 
-            await this.productService.updateProduct(tenantId, id, { name, price, categoryId, isStockControlled, isForSale });
+            await this.productService.updateProduct(tenantId, id, { name, price, categoryId, isStockControlled, isForSale, imageUrl });
             return res.status(200).json({ success: true });
         } catch (error: any) {
             return res.status(400).json({ error: error.message });
