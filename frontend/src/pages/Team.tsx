@@ -176,66 +176,64 @@ export function Team() {
                     </h2>
                 </div>
 
-                <div className="overflow-x-auto pb-32 custom-scrollbar">
-                    <table className="w-full text-left text-sm text-gray-600 min-w-[700px]">
-                        <thead className="text-xs uppercase bg-white text-gray-500 border-b border-gray-100">
-                            <tr>
-                                <th className="px-6 py-4 font-semibold tracking-wider">Usuário</th>
-                                <th className="px-6 py-4 font-semibold tracking-wider">Nível de Acesso (Cargo)</th>
-                                <th className="px-6 py-4 font-semibold tracking-wider">Status</th>
-                                <th className="px-6 py-4 font-semibold tracking-wider">Último Acesso</th>
-                                <th className="px-6 py-4 font-semibold tracking-wider text-right">Opções</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {team.map(member => (
-                                <tr key={member.id} className="hover:bg-gray-50 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center font-bold">
-                                                {member.name.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <div className="font-bold text-gray-900">{member.name}</div>
-                                                <div className="text-xs text-gray-500 flex items-center gap-1"><Mail className="w-3 h-3" /> {member.email}</div>
-                                            </div>
+                {/* Cards Responsivos de Equipe */}
+                <div className="p-4 md:p-6 bg-gray-50/30">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
+                        {team.map(member => (
+                            <div key={member.id} className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-md transition-shadow relative group">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center font-bold text-lg">
+                                            {member.name.charAt(0)}
                                         </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${ROLE_COLORS[member.role]}`}>
+                                        <div>
+                                            <div className="font-bold text-gray-900 text-lg leading-tight">{member.name}</div>
+                                            <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1"><Mail className="w-3 h-3" /> <span className="truncate max-w-[140px] md:max-w-[180px]">{member.email}</span></div>
+                                        </div>
+                                    </div>
+
+                                    {/* Botão de Opções (3 pontinhos) */}
+                                    <div className="relative">
+                                        <button onClick={() => setIsMenuOpenId(isMenuOpenId === member.id ? null : member.id)} className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors">
+                                            <MoreVertical className="w-5 h-5" />
+                                        </button>
+                                        {isMenuOpenId === member.id && (
+                                            <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-gray-100 py-2 z-20 overflow-hidden">
+                                                <button onClick={() => { setEditingMember(member); setIsMenuOpenId(null); setIsModalOpen(true); }} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left font-medium">Editar Perfil</button>
+                                                <button onClick={() => handleDelete(member.id, member.name)} className="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left font-medium">Remover Usuário</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-500 font-medium">Cargo:</span>
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${ROLE_COLORS[member.role]}`}>
                                             {ROLE_LABELS[member.role]}
                                         </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {member.status === 'ACTIVE' && <span className="inline-flex items-center gap-1.5 text-xs font-bold text-green-600"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Ativo</span>}
-                                        {member.status === 'INVITED' && <span className="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-600"><div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div> Pendente (Convite)</span>}
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-500 text-xs">
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-500 font-medium">Status:</span>
+                                        {member.status === 'ACTIVE' && <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-green-600 uppercase tracking-wider"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Ativo</span>}
+                                        {member.status === 'INVITED' && <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-yellow-600 uppercase tracking-wider"><div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div> Pendente</span>}
+                                    </div>
+
+                                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                                        <span>Último Acesso:</span>
                                         {member.lastLogin ? (
-                                            <>
+                                            <span className="font-medium">
                                                 {new Date(member.lastLogin).toLocaleDateString('pt-BR')} às {new Date(member.lastLogin).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                            </>
+                                            </span>
                                         ) : (
-                                            <span className="text-gray-400 italic">Nunca acessou</span>
+                                            <span className="italic">Nunca acessou</span>
                                         )}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="relative">
-                                            <button onClick={() => setIsMenuOpenId(isMenuOpenId === member.id ? null : member.id)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors">
-                                                <MoreVertical className="w-5 h-5" />
-                                            </button>
-                                            {isMenuOpenId === member.id && (
-                                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-10 text-left overflow-hidden">
-                                                    <button onClick={() => { setEditingMember(member); setIsMenuOpenId(null); setIsModalOpen(true); }} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left font-medium">Editar Perfil</button>
-                                                    <button onClick={() => handleDelete(member.id, member.name)} className="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left font-medium">Remover Usuário</button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 
