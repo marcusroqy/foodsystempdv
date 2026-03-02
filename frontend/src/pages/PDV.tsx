@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth, api } from '../contexts/AuthContext';
 import { ShoppingCart, LogOut, Plus, Minus, Trash2, Edit2, X, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { formatCurrency, parseCurrency } from '../utils/format';
@@ -24,9 +25,7 @@ interface CartItem extends Product {
 
 export function PDV() {
     const { user, logout } = useAuth();
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [allCategories, setAllCategories] = useState<Category[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
+    const queryClient = useQueryClient();
     const [cart, setCart] = useState<CartItem[]>(() => {
         const saved = localStorage.getItem('@saas:cart');
         if (saved) {
@@ -39,68 +38,44 @@ export function PDV() {
         return [];
     });
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
 
     // ==========================================
-    // ESTADOS PARA CRUD DE PRODUTOS
+    // BUSCA DE DADOS COM REACT QUERY CACHE
     // ==========================================
-    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [productForm, setProductForm] = useState({ name: '', price: '', categoryId: '1', isForSale: true, isStockControlled: true, imageUrl: '' });
-
-    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-    const [newCategoryName, setNewCategoryName] = useState('');
-
-    const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
-    const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-
-    useEffect(() => {
-        localStorage.setItem('@saas:cart', JSON.stringify(cart));
-    }, [cart]);
-
-    useEffect(() => {
-        fetchDados();
-    }, []);
-
-    const fetchDados = async () => {
-        try {
+    const { data: pdvData, isLoading: loading } = useQuery({
+        queryKey: ['pdv-data'],
+        queryFn: async () => {
             const [catsRes, prodsRes, allProdsRes] = await Promise.all([
                 api.get('/categories?type=MENU'),
                 api.get('/products'),
                 api.get('/products?all=true')
             ]);
 
-            // Prisma Decimal fields come as strings in JSON.
-            // We need to parse them to Number so .toFixed() works in the UI.
             const parsedProducts = prodsRes.data.map((p: any) => ({
                 ...p,
                 price: Number(p.price)
             }));
 
-            setProducts(parsedProducts);
-
-            // Filter purely stock categories
             const pdvCategories = catsRes.data.filter((cat: Category) => {
                 const totalProds = allProdsRes.data.filter((p: any) => p.categoryId === cat.id);
                 const sellableProds = parsedProducts.filter((p: Product) => p.categoryId === cat.id);
-
-                // Keep if it's a new empty category OR if it has sellable products
                 if (totalProds.length === 0) return true;
                 if (sellableProds.length > 0) return true;
-
-                // Hide if it has products but NONE are sellable (pure inventory)
                 return false;
             });
 
-            setAllCategories(pdvCategories);
-            setCategories(pdvCategories);
+            return {
+                products: parsedProducts as Product[],
+                categories: pdvCategories as Category[],
+                allCategories: pdvCategories as Category[]
+            };
+        },
+        staleTime: 1000 * 60 * 5, // 5 minutes cache
+    });
 
-        } catch (error) {
-            console.error('Erro ao buscar dados:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const products = pdvData?.products || [];
+    const categories = pdvData?.categories || [];
+    const allCategories = pdvData?.allCategories || [];
 
     const filteredProducts = selectedCategory
         ? products.filter(p => p.categoryId === selectedCategory)
@@ -152,45 +127,62 @@ export function PDV() {
         setIsProductModalOpen(true);
     };
 
-    const handleSaveProduct = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
+    // Fix Missing States (re-insert)
+    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [productForm, setProductForm] = useState({ name: '', price: '', categoryId: '1', isForSale: true, isStockControlled: true, imageUrl: '' });
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+    const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+
+    useEffect(() => {
+        localStorage.setItem('@saas:cart', JSON.stringify(cart));
+    }, [cart]);
+
+    const saveProductMutation = useMutation({
+        mutationFn: async (data: any) => {
             if (editingProduct) {
-                await api.put(`/products/${editingProduct.id}`, {
-                    name: productForm.name,
-                    price: parseCurrency(productForm.price),
-                    categoryId: productForm.categoryId,
-                    isForSale: productForm.isForSale,
-                    isStockControlled: productForm.isStockControlled,
-                    imageUrl: productForm.imageUrl || null
-                });
-            } else {
-                await api.post('/products', {
-                    name: productForm.name,
-                    price: parseCurrency(productForm.price),
-                    categoryId: productForm.categoryId,
-                    isForSale: productForm.isForSale,
-                    isStockControlled: productForm.isStockControlled,
-                    imageUrl: productForm.imageUrl || null
-                });
+                return api.put(`/products/${editingProduct.id}`, data);
             }
-            fetchDados(); // Atualiza a lista
+            return api.post('/products', data);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['pdv-data'] });
+            queryClient.invalidateQueries({ queryKey: ['inventory-data'] });
             setIsProductModalOpen(false);
-        } catch (error) {
+        },
+        onError: () => {
             alert('Erro ao salvar produto. Verifique se a categoria existe.');
         }
+    });
+
+    const handleSaveProduct = async (e: React.FormEvent) => {
+        e.preventDefault();
+        saveProductMutation.mutate({
+            name: productForm.name,
+            price: parseCurrency(productForm.price),
+            categoryId: productForm.categoryId,
+            isForSale: productForm.isForSale,
+            isStockControlled: productForm.isStockControlled,
+            imageUrl: productForm.imageUrl || null
+        });
     };
+
+    const deleteProductMutation = useMutation({
+        mutationFn: async (id: string) => api.delete(`/products/${id}`),
+        onSuccess: (_, id) => {
+            queryClient.invalidateQueries({ queryKey: ['pdv-data'] });
+            queryClient.invalidateQueries({ queryKey: ['inventory-data'] });
+            removeFromCart(id);
+        },
+        onError: () => alert('Erro ao excluir produto.')
+    });
 
     const handleDeleteProduct = async (e: React.MouseEvent, id: string) => {
         e.stopPropagation(); // Evita adicionar ao carrinho por acidente
         if (window.confirm('Tem certeza que deseja excluir este produto?')) {
-            try {
-                await api.delete(`/products/${id}`);
-                setProducts(prev => prev.filter(p => p.id !== id));
-                removeFromCart(id);
-            } catch (error) {
-                alert('Erro ao excluir produto.');
-            }
+            deleteProductMutation.mutate(id);
         }
     };
 
@@ -534,7 +526,7 @@ export function PDV() {
                                             e.preventDefault();
                                             try {
                                                 await api.post('/categories', { name: newCategoryName.trim(), type: 'MENU' });
-                                                fetchDados();
+                                                queryClient.invalidateQueries({ queryKey: ['pdv-data'] });
                                                 setIsCategoryModalOpen(false);
                                                 setNewCategoryName('');
                                             } catch (err) { alert('Erro ao criar categoria') }
@@ -551,7 +543,7 @@ export function PDV() {
                                         if (newCategoryName.trim()) {
                                             try {
                                                 await api.post('/categories', { name: newCategoryName.trim(), type: 'MENU' });
-                                                fetchDados();
+                                                queryClient.invalidateQueries({ queryKey: ['pdv-data'] });
                                                 setIsCategoryModalOpen(false);
                                                 setNewCategoryName('');
                                             } catch (err) { alert('Erro ao criar categoria') }

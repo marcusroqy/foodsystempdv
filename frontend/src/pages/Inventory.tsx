@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Package, ArrowUpRight, ArrowDownRight, Search, AlertTriangle, Activity, PieChart, PackageSearch, X, Edit2, Loader2, Plus } from 'lucide-react';
 import { api } from '../contexts/AuthContext';
 import { formatQuantity, parseQuantity } from '../utils/format';
@@ -17,10 +18,9 @@ interface StockItem {
 }
 
 export function Inventory() {
+    const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('');
-    const [items, setItems] = useState<StockItem[]>([]);
-    const [loading, setLoading] = useState(true);
     const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<StockItem | null>(null);
     const [adjustForm, setAdjustForm] = useState({ type: 'IN', quantity: '', reason: '' });
@@ -33,37 +33,32 @@ export function Inventory() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [createForm, setCreateForm] = useState({ name: '', categoryId: '', imageUrl: '' });
 
-    const [dbCategories, setDbCategories] = useState<{ id: string, name: string }[]>([]);
+    // ==========================================
+    // BUSCA DE DADOS COM REACT QUERY CACHE
+    // ==========================================
+    const { data: inventoryData, isLoading: loading } = useQuery({
+        queryKey: ['inventory-data'],
+        queryFn: async () => {
+            const [response, catResponse] = await Promise.all([
+                api.get('/inventory'),
+                api.get('/categories?type=INVENTORY')
+            ]);
 
-    // Category Modal State
-    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-    const [newCategoryName, setNewCategoryName] = useState('');
-
-    const fetchInventory = async () => {
-        try {
-            const response = await api.get('/inventory');
-            const catResponse = await api.get('/categories?type=INVENTORY');
-
-            setDbCategories(catResponse.data);
-
-            // Keep categoryId around for edits
             const withCatIds = response.data.map((item: any) => ({
                 ...item,
                 categoryId: catResponse.data.find((c: any) => c.name === item.categoryName)?.id
             }));
-            setItems(withCatIds);
-        } catch (err: any) {
-            console.error('Erro ao buscar estoque:', err);
-            alert('Erro ao carregar estoque: ' + (err.message || 'Desconhecido'));
-            setItems([]);
-        } finally {
-            setLoading(false);
-        }
-    };
 
-    useEffect(() => {
-        fetchInventory();
-    }, []);
+            return {
+                items: withCatIds as StockItem[],
+                categories: catResponse.data as { id: string, name: string }[]
+            };
+        },
+        staleTime: 1000 * 60 * 5, // 5 minutes cache
+    });
+
+    const items = inventoryData?.items || [];
+    const dbCategories = inventoryData?.categories || [];
 
     const filteredItems = useMemo(() => {
         return items.filter(item => {
@@ -79,26 +74,33 @@ export function Inventory() {
     const lowStockCount = items.filter(i => i.status === 'LOW').length;
     const totalValueMock = "R$ 0,00"; // Fake info for styling purposes
 
+    // Category Modal State
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+
     const openAdjustModal = (item: StockItem) => {
         setSelectedItem(item);
         setAdjustForm({ type: 'IN', quantity: '', reason: 'Ajuste Manual' });
         setIsAdjustModalOpen(true);
     };
 
+    const adjustMutation = useMutation({
+        mutationFn: async (data: any) => api.post('/inventory/adjust', data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['inventory-data'] });
+            setIsAdjustModalOpen(false);
+        },
+        onError: () => alert('Erro ao ajustar estoque.')
+    });
+
     const handleSaveAdjustment = async (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            await api.post('/inventory/adjust', {
-                productId: selectedItem?.id,
-                type: adjustForm.type,
-                quantity: parseQuantity(adjustForm.quantity),
-                reason: adjustForm.reason
-            });
-            setIsAdjustModalOpen(false);
-            window.location.reload(); // Simple reload to refresh data
-        } catch (error) {
-            alert('Erro ao ajustar estoque.');
-        }
+        adjustMutation.mutate({
+            productId: selectedItem?.id,
+            type: adjustForm.type,
+            quantity: parseQuantity(adjustForm.quantity),
+            reason: adjustForm.reason
+        });
     };
 
     const openEditModal = (item: StockItem) => {
@@ -107,49 +109,60 @@ export function Inventory() {
         setIsEditModalOpen(true);
     };
 
+    const editMutation = useMutation({
+        mutationFn: async (data: any) => api.put(`/products/${selectedItem?.id}`, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['inventory-data'] });
+            queryClient.invalidateQueries({ queryKey: ['pdv-data'] });
+            setIsEditModalOpen(false);
+        },
+        onError: () => alert('Erro ao editar item.')
+    });
+
     const handleSaveEdit = async (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            await api.put(`/products/${selectedItem?.id}`, {
-                name: editForm.name,
-                categoryId: editForm.categoryId || null,
-                imageUrl: editForm.imageUrl || null
-            });
-            setIsEditModalOpen(false);
-            window.location.reload();
-        } catch (error) {
-            alert('Erro ao editar item.');
-        }
+        editMutation.mutate({
+            name: editForm.name,
+            categoryId: editForm.categoryId || null,
+            imageUrl: editForm.imageUrl || null
+        });
     };
+
+    const createMutation = useMutation({
+        mutationFn: async (data: any) => api.post('/products', data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['inventory-data'] });
+            queryClient.invalidateQueries({ queryKey: ['pdv-data'] });
+            setIsCreateModalOpen(false);
+        },
+        onError: (error: any) => alert(error.response?.data?.error || 'Erro ao criar item.')
+    });
 
     const handleCreateItem = async (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            await api.post('/products', {
-                name: createForm.name,
-                price: 0, // Insumos geralmente não têm preço de venda direta aqui
-                categoryId: createForm.categoryId,
-                imageUrl: createForm.imageUrl || null,
-                isForSale: false,
-                isStockControlled: true
-            });
-            setIsCreateModalOpen(false);
-            fetchInventory();
-        } catch (error: any) {
-            alert(error.response?.data?.error || 'Erro ao criar item.');
-        }
+        createMutation.mutate({
+            name: createForm.name,
+            price: 0,
+            categoryId: createForm.categoryId,
+            imageUrl: createForm.imageUrl || null,
+            isForSale: false,
+            isStockControlled: true
+        });
     };
+
+    const createCategoryMutation = useMutation({
+        mutationFn: async (data: any) => api.post('/categories', data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['inventory-data'] });
+            setIsCategoryModalOpen(false);
+            setNewCategoryName('');
+        },
+        onError: () => alert('Erro ao criar categoria.')
+    });
 
     const handleCreateCategory = async (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            await api.post('/categories', { name: newCategoryName.trim(), type: 'INVENTORY' });
-            fetchInventory();
-            setIsCategoryModalOpen(false);
-            setNewCategoryName('');
-        } catch (error) {
-            alert('Erro ao criar categoria.');
-        }
+        createCategoryMutation.mutate({ name: newCategoryName.trim(), type: 'INVENTORY' });
     };
 
     return (
