@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../contexts/AuthContext';
-import { ChefHat, Loader2, PlayCircle, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { ChefHat, Loader2, PlayCircle, CheckCircle2, Clock, AlertCircle, Volume2, VolumeX } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -25,15 +25,65 @@ interface Order {
 export function Kitchen() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isAudioEnabled, setIsAudioEnabled] = useState(false);
+    const knownOrderIds = useRef<Set<string>>(new Set());
+
+    const playNotificationSound = () => {
+        if (!isAudioEnabled) return;
+
+        try {
+            // 1. Play a Beep/Bell sound using AudioContext
+            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+            const ctx = new AudioContext();
+
+            const osc = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+
+            osc.connect(gainNode);
+            gainNode.connect(ctx.destination);
+
+            osc.frequency.setValueAtTime(800, ctx.currentTime); // High pitch BEEP
+            osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+
+            gainNode.gain.setValueAtTime(0, ctx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.5);
+
+            // 2. Speak using SpeechSynthesis
+            setTimeout(() => {
+                const msg = new SpeechSynthesisUtterance('Novo pedido na cozinha!');
+                msg.lang = 'pt-BR';
+                msg.rate = 1.1; // Slightly faster
+                window.speechSynthesis.speak(msg);
+            }, 600); // Wait for the beep to finish
+
+        } catch (e) {
+            console.error('Erro ao reproduzir áudio:', e);
+        }
+    };
 
     const fetchOrders = async () => {
         try {
-            // We only want active orders for the kitchen
             const res = await api.get('/orders');
             const activeOrders = res.data.filter((o: Order) => o.status === 'QUEUE' || o.status === 'PREPARING');
 
-            // Sort by createdAt ascending (oldest first)
             activeOrders.sort((a: Order, b: Order) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+            // Check for NEW orders to trigger sound
+            if (knownOrderIds.current.size > 0 && activeOrders.length > 0) {
+                const hasNewOrders = activeOrders.some((o: Order) => !knownOrderIds.current.has(o.id));
+                if (hasNewOrders) {
+                    playNotificationSound();
+                }
+            }
+
+            // Update known orders tracking memory
+            const newKnownIds = new Set<string>();
+            activeOrders.forEach((o: Order) => newKnownIds.add(o.id));
+            knownOrderIds.current = newKnownIds;
 
             setOrders(activeOrders);
         } catch (error) {
@@ -86,11 +136,40 @@ export function Kitchen() {
                     </h1>
                     <p className="text-gray-500 text-sm mt-1">Atualização automática a cada 15s</p>
                 </div>
-                <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100 flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="font-bold text-gray-700">{orders.length} pedidos na fila</span>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => {
+                            setIsAudioEnabled(!isAudioEnabled);
+                            if (!isAudioEnabled) {
+                                // Request permission/initial interaction to unlock Audio API
+                                const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                                ctx.resume();
+                            }
+                        }}
+                        className={`flex items-center justify-center p-2 rounded-xl transition-colors shadow-sm border ${isAudioEnabled
+                                ? 'bg-primary-50 text-primary-600 border-primary-200 hover:bg-primary-100'
+                                : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'
+                            }`}
+                        title={isAudioEnabled ? 'Notificações Sonoras Ligadas' : 'Ligar Notificações Sonoras'}
+                    >
+                        {isAudioEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+                    </button>
+
+                    <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100 flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+                        <span className="font-bold text-gray-700">{orders.length} pedidos</span>
+                    </div>
                 </div>
             </div>
+
+            {!isAudioEnabled && orders.length > 0 && (
+                <div className="mb-4 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-xl flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 shrink-0" />
+                        <span className="text-sm font-medium">Ligue as notificações sonoras (botão de volume acima) para ouvir quando um novo pedido chegar.</span>
+                    </div>
+                </div>
+            )}
 
             {/* Comandas Grid */}
             <div className="flex-1 overflow-x-auto overflow-y-hidden -mx-4 px-4 md:-mx-6 md:px-6">
