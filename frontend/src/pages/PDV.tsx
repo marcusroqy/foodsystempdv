@@ -197,7 +197,7 @@ export function PDV() {
                 {/* Header */}
                 <div className="flex justify-between items-center mb-3 md:mb-6">
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 tracking-tight">Ponto de Venda</h1>
+                        <h1 className="text-2xl font-black text-gray-900 tracking-tight">Ponto de Venda</h1>
                         <p className="hidden md:block text-gray-500 text-sm mt-1">Olá, {user?.name || 'Operador'}</p>
                     </div>
                     <button onClick={logout} className="hidden md:flex items-center gap-2 text-gray-500 hover:text-red-500 transition-colors">
@@ -253,8 +253,10 @@ export function PDV() {
                                             {product.name.charAt(0)}
                                         </span>
                                     </div>
-                                    <h3 className="text-sm md:text-base font-semibold text-gray-800 line-clamp-2 leading-tight">{product.name}</h3>
-                                    <p className="text-primary-600 font-bold mt-1 text-[13px] md:text-base">R$ {product.price.toFixed(2)}</p>
+                                    <div className="flex-1 flex flex-col justify-between w-full mt-1">
+                                        <h3 className="text-sm md:text-[15px] font-bold text-gray-800 line-clamp-2 leading-snug mb-1">{product.name}</h3>
+                                        <p className="text-primary-600 font-black text-sm md:text-[17px]">R$ {product.price.toFixed(2)}</p>
+                                    </div>
                                 </button>
 
                                 {/* Ações de Edição e Exclusão (Apenas no Hover) */}

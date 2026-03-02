@@ -28,13 +28,12 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             <aside className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between hidden md:flex z-10 shadow-sm relative">
                 <div>
                     {/* Logo Area */}
-                    <div className="h-20 flex items-center gap-3 px-6 border-b border-gray-100 mb-6">
-                        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <Store className="w-8 h-8 text-primary-500" />
-                                <h2 className="font-black text-gray-900 text-lg leading-tight tracking-tighter">FoodSystem</h2>
-                            </div>    <p className="text-xs text-primary-600 font-medium">Gestão Inteligente</p>
+                    <div className="h-24 flex flex-col justify-center px-6 border-b border-gray-100 mb-6 gap-0.5">
+                        <div className="flex items-center gap-2">
+                            <Store className="w-7 h-7 text-primary-600" />
+                            <h2 className="font-black text-gray-900 text-xl leading-none tracking-tighter">FoodSystem</h2>
                         </div>
+                        <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider ml-9">Gestão Inteligente</p>
                     </div>
 
                     {/* Menu Navigation */}
@@ -44,9 +43,9 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                                 key={item.path}
                                 to={item.path}
                                 className={({ isActive }) =>
-                                    `flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${isActive
-                                        ? 'bg-primary-50 text-primary-600 shadow-inner'
-                                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                                    `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
+                                        ? 'bg-primary-50 text-primary-600 font-bold shadow-sm'
+                                        : 'text-gray-500 font-medium hover:bg-gray-50 hover:text-gray-900'
                                     }`
                                 }
                             >
