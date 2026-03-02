@@ -22,7 +22,7 @@ async function test() {
     const loginData = await loginRes.json();
     const token = loginData.token;
 
-    const catRes = await fetch('https://foodsystempdv.onrender.com/api/categories?type=INVENTORY', {
+    const catRes = await fetch('https://foodsystempdv.onrender.com/api/products', {
       headers: { Authorization: `Bearer ${token}` }
     });
 
