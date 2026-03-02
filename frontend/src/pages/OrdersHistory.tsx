@@ -58,6 +58,27 @@ export function OrdersHistory() {
         }
     };
 
+    const handleStatusChange = async (orderId: string, newStatus: string) => {
+        try {
+            await api.patch(`/orders/${orderId}/status`, { status: newStatus });
+            setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o));
+        } catch (error) {
+            alert('Erro ao atualizar status do pedido.');
+        }
+    };
+
+    const handleDeleteOrder = async (orderId: string) => {
+        if (!window.confirm('Tem certeza que deseja apagar este pedido? Esta ação não pode ser desfeita.')) return;
+
+        try {
+            await api.delete(`/orders/${orderId}`);
+            setOrders(orders.filter(o => o.id !== orderId));
+            if (selectedOrder?.id === orderId) setSelectedOrder(null);
+        } catch (error) {
+            alert('Erro ao excluir pedido.');
+        }
+    };
+
     const formatDate = (dateString: string) => {
         try {
             return format(new Date(dateString), "dd MMM yyyy, HH:mm", { locale: ptBR });
@@ -137,21 +158,46 @@ export function OrdersHistory() {
                                             </div>
                                         </td>
                                         <td className="p-4 lg:p-5 align-middle">
-                                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${statusColors[order.status]}`}>
-                                                {statusLabels[order.status]}
-                                            </span>
+                                            <div className="relative inline-block">
+                                                <select
+                                                    value={order.status}
+                                                    onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                                                    className={`appearance-none bg-transparent pl-3 pr-8 py-1.5 rounded-full text-xs font-bold outline-none cursor-pointer border-2 transition-colors ${order.status === 'QUEUE' ? 'border-yellow-200 text-yellow-800 bg-yellow-50 hover:bg-yellow-100' :
+                                                            order.status === 'PREPARING' ? 'border-blue-200 text-blue-800 bg-blue-50 hover:bg-blue-100' :
+                                                                order.status === 'COMPLETED' ? 'border-green-200 text-green-800 bg-green-50 hover:bg-green-100' :
+                                                                    'border-red-200 text-red-800 bg-red-50 hover:bg-red-100'
+                                                        }`}
+                                                >
+                                                    <option value="QUEUE">Na Fila</option>
+                                                    <option value="PREPARING">Preparando</option>
+                                                    <option value="COMPLETED">Concluído</option>
+                                                    <option value="CANCELED">Cancelado</option>
+                                                </select>
+                                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                                    <svg className="h-3 w-3 text-current opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="p-4 lg:p-5 text-right font-bold text-gray-900 align-middle whitespace-nowrap">
                                             R$ {Number(order.totalAmount).toFixed(2)}
                                         </td>
                                         <td className="p-4 lg:p-5 text-center align-middle">
-                                            <button
-                                                onClick={() => setSelectedOrder(order)}
-                                                className="inline-flex items-center justify-center p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-primary-50 hover:text-primary-600 transition-colors"
-                                                title="Ver Detalhes"
-                                            >
-                                                <Eye className="w-5 h-5" />
-                                            </button>
+                                            <div className="flex justify-center items-center gap-2">
+                                                <button
+                                                    onClick={() => setSelectedOrder(order)}
+                                                    className="inline-flex items-center justify-center p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-primary-50 hover:text-primary-600 transition-colors"
+                                                    title="Ver Detalhes"
+                                                >
+                                                    <Eye className="w-5 h-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteOrder(order.id)}
+                                                    className="inline-flex items-center justify-center p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
+                                                    title="Excluir Pedido"
+                                                >
+                                                    <X className="w-5 h-5" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
