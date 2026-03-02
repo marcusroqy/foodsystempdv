@@ -9,6 +9,7 @@ import { Inventory } from './pages/Inventory';
 import { Finance } from './pages/Finance';
 import { Team } from './pages/Team';
 import { OrdersHistory } from './pages/OrdersHistory';
+import { Kitchen } from './pages/Kitchen';
 
 const PrivateRoute = ({ children }: { children: ReactElement }) => {
   const { isAuthenticated, isLoading, mustChangePassword } = useAuth();
@@ -81,6 +82,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <OrdersHistory />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/cozinha"
+        element={
+          <PrivateRoute>
+            <Kitchen />
           </PrivateRoute>
         }
       />
