@@ -51,53 +51,52 @@ const useOrderTimer = (createdAt: string) => {
     return { timeStr, isLate };
 };
 
-// Componente Isolado de Ticket (Comanda Digital)
 function OrderTicket({ order, onUpdateStatus }: { order: Order, onUpdateStatus: (id: string, s: string) => void }) {
     const { timeStr, isLate } = useOrderTimer(order.createdAt);
     const isPreparing = order.status === 'PREPARING';
 
     return (
-        <div className={`flex-none w-[340px] flex flex-col max-h-[calc(100vh-140px)] rounded-xl shadow-2xl transition-all flex-shrink-0 snap-start relative overflow-hidden bg-slate-800 border-2 ${isPreparing ? 'border-blue-500 shadow-blue-500/20' : 'border-slate-700'}`}>
+        <div className={`flex-none w-[340px] flex flex-col max-h-[calc(100vh-140px)] rounded-2xl shadow-sm hover:shadow-md transition-all flex-shrink-0 snap-start relative overflow-hidden bg-white border ${isPreparing ? 'border-blue-300 shadow-blue-500/10' : 'border-gray-200'}`}>
 
             {/* Tag Lateral "Novo" ou "Em Preparo" */}
-            <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${isPreparing ? 'bg-blue-500' : 'bg-emerald-500'}`}></div>
+            <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${isPreparing ? 'bg-blue-500' : 'bg-primary-500'}`}></div>
 
             {/* Cabeçalho do Recibo */}
-            <div className={`pl-5 pr-4 py-4 flex justify-between items-start border-b border-slate-700/50 ${isLate ? 'bg-red-500/10' : 'bg-slate-800/50'}`}>
+            <div className={`pl-5 pr-4 py-4 flex justify-between items-start border-b border-gray-100 ${isLate ? 'bg-red-50' : isPreparing ? 'bg-blue-50/30' : 'bg-gray-50/50'}`}>
                 <div>
-                    <h3 className="text-2xl font-black text-white leading-none mb-1">
+                    <h3 className="text-2xl font-black text-gray-900 leading-none mb-1">
                         #{order.id.slice(-4).toUpperCase()}
                     </h3>
-                    <p className="text-sm font-bold text-slate-400 truncate max-w-[160px]">
+                    <p className="text-sm font-bold text-gray-500 truncate max-w-[160px]">
                         {order.customerName || 'Balcão'}
                     </p>
                 </div>
 
                 {/* Timer Real-Time Grande */}
-                <div className={`flex flex-col items-end px-3 py-1.5 rounded-lg border ${isLate ? 'bg-red-500/20 border-red-500/30' : 'bg-slate-900 border-slate-700'}`}>
+                <div className={`flex flex-col items-end px-3 py-1.5 rounded-lg border bg-white ${isLate ? 'border-red-200 shadow-sm' : 'border-gray-200 shadow-sm'}`}>
                     <div className="flex items-center gap-1.5">
-                        <Clock className={`w-4 h-4 ${isLate ? 'text-red-400 animate-pulse' : 'text-slate-400'}`} />
-                        <span className={`font-mono text-xl font-bold tracking-tight ${isLate ? 'text-red-400' : 'text-slate-300'}`}>
+                        <Clock className={`w-4 h-4 ${isLate ? 'text-red-500 animate-pulse' : 'text-gray-400'}`} />
+                        <span className={`font-mono text-xl font-bold tracking-tight ${isLate ? 'text-red-600' : 'text-gray-700'}`}>
                             {timeStr}
                         </span>
                     </div>
                 </div>
             </div>
 
-            {/* Lista de Itens (Scrollável) - Fundo escuro imitando papel térmico escuro */}
-            <div className="p-4 flex-1 overflow-y-auto space-y-4 bg-slate-900/50 custom-scrollbar">
+            {/* Lista de Itens (Scrollável) */}
+            <div className="p-4 flex-1 overflow-y-auto space-y-3 bg-white custom-scrollbar border-b border-gray-100">
                 {order.items.map(item => (
-                    <div key={item.id} className="flex gap-4 items-start">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xl shrink-0 shadow-inner ${isPreparing ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}>
+                    <div key={item.id} className="flex gap-4 items-start pb-3 border-b border-gray-50 last:border-0 last:pb-0">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xl shrink-0 shadow-sm ${isPreparing ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}>
                             {item.quantity}
                         </div>
                         <div className="flex-1 pt-1">
-                            <h4 className="text-lg font-bold text-white leading-tight">
+                            <h4 className="text-lg font-bold text-gray-800 leading-tight">
                                 {item.product?.name || 'Item Excluído'}
                             </h4>
                             {item.notes && (
-                                <div className="mt-2 text-sm text-yellow-200 bg-yellow-500/10 border border-yellow-500/20 px-3 py-2 rounded-lg font-medium flex gap-2">
-                                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                <div className="mt-2 text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 px-3 py-2 rounded-lg font-medium flex gap-2">
+                                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-yellow-600" />
                                     <span>{item.notes}</span>
                                 </div>
                             )}
@@ -107,20 +106,20 @@ function OrderTicket({ order, onUpdateStatus }: { order: Order, onUpdateStatus: 
             </div>
 
             {/* Ações (Touch Buttons Gigantes) */}
-            <div className="p-4 bg-slate-800 border-t border-slate-700 mt-auto">
+            <div className="p-4 bg-gray-50 mt-auto">
                 {order.status === 'QUEUE' ? (
                     <button
                         onClick={() => onUpdateStatus(order.id, 'PREPARING')}
-                        className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-xl uppercase tracking-wider transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3"
+                        className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-lg uppercase tracking-wider transition-all shadow-md shadow-blue-600/20 active:scale-95 flex items-center justify-center gap-3"
                     >
-                        <PlayCircle className="w-7 h-7" /> Iniciar Preparo
+                        <PlayCircle className="w-6 h-6" /> Iniciar Preparo
                     </button>
                 ) : (
                     <button
                         onClick={() => onUpdateStatus(order.id, 'COMPLETED')}
-                        className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-xl uppercase tracking-wider transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3"
+                        className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black text-lg uppercase tracking-wider transition-all shadow-md shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-3"
                     >
-                        <CheckCircle2 className="w-7 h-7" /> Pronto (Saída)
+                        <CheckCircle2 className="w-6 h-6" /> Pronto (Saída)
                     </button>
                 )}
             </div>
@@ -236,16 +235,16 @@ export function Kitchen() {
     const prepOrders = orders.filter(o => o.status === 'PREPARING');
 
     return (
-        <div className="flex flex-col h-full bg-slate-950 p-4 md:p-6 pb-24 md:pb-6 relative overflow-hidden font-sans">
-            {/* Header Dark Mode */}
+        <div className="flex flex-col h-full bg-gray-100 p-4 md:p-6 pb-24 md:pb-6 relative overflow-hidden font-sans">
+            {/* Header Light Mode */}
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight flex items-center gap-3">
-                        <ChefHat className="w-10 h-10 text-emerald-500" />
-                        KDS <span className="text-slate-500 text-xl md:text-2xl font-medium ml-2">Monitor da Cozinha</span>
+                    <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+                        <ChefHat className="w-8 h-8 text-primary-500" />
+                        KDS <span className="text-gray-400 text-xl md:text-2xl font-medium ml-2 border-l border-gray-300 pl-4 hidden md:inline">Monitor da Cozinha</span>
                     </h1>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 md:gap-4">
                     <button
                         onClick={() => {
                             setIsAudioEnabled(!isAudioEnabled);
@@ -255,45 +254,45 @@ export function Kitchen() {
                                 ctx.resume();
                             }
                         }}
-                        className={`flex items-center justify-center p-3 rounded-2xl transition-all shadow-lg ${isAudioEnabled
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30'
-                            : 'bg-slate-800 text-slate-500 border border-slate-700 hover:bg-slate-700'
+                        className={`flex items-center justify-center p-3 rounded-2xl transition-all shadow-sm ${isAudioEnabled
+                            ? 'bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100'
+                            : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
                             }`}
                         title={isAudioEnabled ? 'Sons Ligados' : 'Ligar Sons (Recomendado)'}
                     >
-                        {isAudioEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+                        {isAudioEnabled ? <Volume2 className="w-5 h-5 md:w-6 md:h-6" /> : <VolumeX className="w-5 h-5 md:w-6 md:h-6" />}
                     </button>
 
-                    <div className="bg-slate-800 px-5 py-3 rounded-2xl border border-slate-700 shadow-inner flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-emerald-500 animate-[pulse_2s_ease-in-out_infinite] shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-                        <span className="font-bold text-white text-lg">{orders.length}</span>
-                        <span className="text-slate-400 font-medium">pedidos ativos</span>
+                    <div className="bg-white px-4 md:px-5 py-2.5 md:py-3 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-2 md:gap-3">
+                        <div className="w-2.5 md:w-3 h-2.5 md:h-3 rounded-full bg-primary-500 animate-[pulse_2s_ease-in-out_infinite] shadow-[0_0_10px_rgba(var(--color-primary-500),0.5)]"></div>
+                        <span className="font-black text-gray-900 text-base md:text-lg">{orders.length}</span>
+                        <span className="text-gray-500 font-medium text-sm md:text-base hidden sm:inline">pedidos ativos</span>
                     </div>
                 </div>
             </div>
 
             {!isAudioEnabled && orders.length > 0 && (
-                <div className="mb-6 bg-amber-500/10 border border-amber-500/20 text-amber-200 px-4 py-4 rounded-xl flex items-center shadow-lg shadow-amber-500/5">
-                    <AlertCircle className="w-6 h-6 shrink-0 mr-3 text-amber-500" />
-                    <span className="text-sm md:text-base font-medium">Toque no alto-falante acima para habilitar o ALARME SONORO de novos pedidos.</span>
+                <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 md:py-4 rounded-xl flex items-center shadow-sm">
+                    <AlertCircle className="w-5 h-5 md:w-6 md:h-6 shrink-0 mr-3 text-amber-500" />
+                    <span className="text-sm md:text-base font-medium">Toque no ícone de som acima para habilitar o ALARME SONORO de novos pedidos.</span>
                 </div>
             )}
 
             {/* Kanban KDS Board */}
             <div className="flex-1 overflow-x-auto overflow-y-hidden -mx-4 px-4 md:-mx-6 md:px-6 custom-scrollbar">
                 {loading && orders.length === 0 ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-4 mt-10">
-                        <Loader2 className="w-16 h-16 animate-spin text-slate-600" />
-                        <span className="font-bold text-xl tracking-tight">Sincronizando Cozinha...</span>
+                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-4 mt-10">
+                        <Loader2 className="w-12 h-12 md:w-16 md:h-16 animate-spin text-primary-500" />
+                        <span className="font-bold text-lg md:text-xl tracking-tight text-gray-500">Sincronizando Cozinha...</span>
                     </div>
                 ) : orders.length === 0 ? (
                     <div className="w-full h-full flex flex-col items-center justify-center mt-10">
-                        <ChefHat className="w-32 h-32 mb-6 text-slate-800" />
-                        <h2 className="text-3xl font-black text-slate-400 mb-2 tracking-tight">Cozinha Limpa!</h2>
-                        <p className="text-slate-500 font-medium text-lg">Nenhum pedido na fila de produção.</p>
+                        <ChefHat className="w-24 h-24 md:w-32 md:h-32 mb-6 text-gray-200" />
+                        <h2 className="text-2xl md:text-3xl font-black text-gray-400 mb-2 tracking-tight">Cozinha Limpa!</h2>
+                        <p className="text-gray-400 font-medium text-base md:text-lg">Nenhum pedido na fila de produção.</p>
                     </div>
                 ) : (
-                    <div className="flex gap-6 h-full pb-4 items-start snap-x">
+                    <div className="flex gap-4 md:gap-6 h-full pb-4 items-start snap-x">
 
                         {/* Renderizar primeiro os EM PREPARO (foco maior) e depois os NA FILA */}
                         {prepOrders.map(order => (
@@ -302,7 +301,7 @@ export function Kitchen() {
 
                         {/* Separador Visual se houverem os dois tipos */}
                         {prepOrders.length > 0 && queueOrders.length > 0 && (
-                            <div className="w-px h-[80%] bg-slate-800 my-auto rounded-full mx-2 flex-shrink-0"></div>
+                            <div className="w-px h-[80%] bg-gray-300 my-auto rounded-full mx-1 md:mx-2 flex-shrink-0"></div>
                         )}
 
                         {queueOrders.map(order => (
@@ -314,20 +313,19 @@ export function Kitchen() {
 
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar {
-                    height: 12px;
+                    height: 8px;
                     width: 8px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-track {
-                    background: rgba(15, 23, 42, 0.5); /* slate-900 border */
+                    background: rgba(243, 244, 246, 0.5); /* gray-100 */
                     border-radius: 8px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background-color: rgba(51, 65, 85, 0.8); /* slate-700 */
+                    background-color: rgba(209, 213, 219, 1); /* gray-300 */
                     border-radius: 8px;
-                    border: 2px solid rgba(15, 23, 42, 1);
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background-color: rgba(71, 85, 105, 1); /* slate-600 */
+                    background-color: rgba(156, 163, 175, 1); /* gray-400 */
                 }
             `}</style>
         </div>
