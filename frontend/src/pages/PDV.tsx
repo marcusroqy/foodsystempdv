@@ -310,8 +310,8 @@ export function PDV() {
 
             {/* Direita: Carrinho (Desktop) / Bottom Sheet (Mobile) */}
             <div className={`
-                fixed inset-0 z-40 bg-white flex flex-col transition-transform duration-300
-                md:relative md:w-96 md:border-l md:border-gray-200 md:shadow-[-4px_0_15px_-5px_rgba(0,0,0,0.05)] md:transform-none md:z-auto
+                fixed inset-0 z-40 bg-white flex flex-col transition-transform duration-300 pb-24 pb-safe
+                md:relative md:w-96 md:border-l md:border-gray-200 md:shadow-[-4px_0_15px_-5px_rgba(0,0,0,0.05)] md:transform-none md:pb-0 md:z-auto
                 ${isMobileCartOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
             `}>
                 <div className="p-6 border-b border-gray-100 flex items-center justify-between">
