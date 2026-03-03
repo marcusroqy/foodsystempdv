@@ -131,14 +131,18 @@ export function Kitchen() {
     const queryClient = useQueryClient();
     const [isAudioEnabled, setIsAudioEnabled] = useState(false);
     const knownOrderIds = useRef<Set<string>>(new Set());
+    // Ref para manter o AudioContext vivo
+    const audioCtxRef = useRef<AudioContext | null>(null);
 
     // Som de Notificação
     const playNotificationSound = () => {
-        if (!isAudioEnabled) return;
+        if (!isAudioEnabled || !audioCtxRef.current) return;
 
         try {
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-            const ctx = new AudioContext();
+            const ctx = audioCtxRef.current;
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
 
             const osc = ctx.createOscillator();
             const gainNode = ctx.createGain();
@@ -247,11 +251,31 @@ export function Kitchen() {
                 <div className="flex items-center gap-3 md:gap-4">
                     <button
                         onClick={() => {
-                            setIsAudioEnabled(!isAudioEnabled);
                             if (!isAudioEnabled) {
                                 // Request permission/initial interaction to unlock Audio API
-                                const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                                ctx.resume();
+                                const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+                                const ctx = new AudioContext();
+                                ctx.resume().then(() => {
+                                    audioCtxRef.current = ctx;
+
+                                    // Play silent beep to unlock iOS Safari
+                                    const osc = ctx.createOscillator();
+                                    osc.connect(ctx.destination);
+                                    osc.start();
+                                    osc.stop(ctx.currentTime + 0.01);
+
+                                    // Unlock SpeechSynthesis
+                                    const msg = new SpeechSynthesisUtterance('');
+                                    window.speechSynthesis.speak(msg);
+
+                                    setIsAudioEnabled(true);
+                                });
+                            } else {
+                                setIsAudioEnabled(false);
+                                if (audioCtxRef.current) {
+                                    audioCtxRef.current.suspend();
+                                    audioCtxRef.current = null;
+                                }
                             }
                         }}
                         className={`flex items-center justify-center p-3 rounded-2xl transition-all shadow-sm ${isAudioEnabled
