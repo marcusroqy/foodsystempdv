@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../contexts/AuthContext';
 import { FileText, Loader2, ShoppingBag, Calendar, User, Eye, X } from 'lucide-react';
 import { format } from 'date-fns';
@@ -39,44 +40,76 @@ const statusLabels = {
 };
 
 export function OrdersHistory() {
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-    useEffect(() => {
-        fetchOrders();
-    }, []);
-
-    const fetchOrders = async () => {
-        try {
+    const { data: orders = [], isLoading: loading } = useQuery({
+        queryKey: ['orders-history'],
+        queryFn: async () => {
             const res = await api.get('/orders');
-            setOrders(res.data);
-        } catch (error) {
-            console.error('Erro ao buscar pedidos:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+            return res.data as Order[];
+        },
+        staleTime: 1000 * 60 * 5, // 5 minutes cache
+    });
 
-    const handleStatusChange = async (orderId: string, newStatus: string) => {
-        try {
-            await api.patch(`/orders/${orderId}/status`, { status: newStatus });
-            setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o));
-        } catch (error) {
+    const updateStatusMutation = useMutation({
+        mutationFn: async ({ id, status }: { id: string, status: string }) => {
+            return api.patch(`/orders/${id}/status`, { status });
+        },
+        onMutate: async ({ id, status }) => {
+            await queryClient.cancelQueries({ queryKey: ['orders-history'] });
+            const previousOrders = queryClient.getQueryData<Order[]>(['orders-history']);
+
+            if (previousOrders) {
+                queryClient.setQueryData(['orders-history'], previousOrders.map(o => o.id === id ? { ...o, status: status as any } : o));
+            }
+            return { previousOrders };
+        },
+        onError: (_err, _variables, context: any) => {
+            if (context?.previousOrders) {
+                queryClient.setQueryData(['orders-history'], context.previousOrders);
+            }
             alert('Erro ao atualizar status do pedido.');
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['orders-history'] });
         }
+    });
+
+    const handleStatusChange = (orderId: string, newStatus: string) => {
+        updateStatusMutation.mutate({ id: orderId, status: newStatus });
     };
 
-    const handleDeleteOrder = async (orderId: string) => {
-        if (!window.confirm('Tem certeza que deseja apagar este pedido? Esta ação não pode ser desfeita.')) return;
+    const deleteOrderMutation = useMutation({
+        mutationFn: async (orderId: string) => {
+            return api.delete(`/orders/${orderId}`);
+        },
+        onMutate: async (orderId) => {
+            await queryClient.cancelQueries({ queryKey: ['orders-history'] });
+            const previousOrders = queryClient.getQueryData<Order[]>(['orders-history']);
 
-        try {
-            await api.delete(`/orders/${orderId}`);
-            setOrders(orders.filter(o => o.id !== orderId));
-            if (selectedOrder?.id === orderId) setSelectedOrder(null);
-        } catch (error) {
+            if (previousOrders) {
+                queryClient.setQueryData(['orders-history'], previousOrders.filter(o => o.id !== orderId));
+            }
+            if (selectedOrder?.id === orderId) {
+                setSelectedOrder(null);
+            }
+            return { previousOrders };
+        },
+        onError: (_err, _variables, context: any) => {
+            if (context?.previousOrders) {
+                queryClient.setQueryData(['orders-history'], context.previousOrders);
+            }
             alert('Erro ao excluir pedido.');
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['orders-history'] });
         }
+    });
+
+    const handleDeleteOrder = (orderId: string) => {
+        if (!window.confirm('Tem certeza que deseja apagar este pedido? Esta ação não pode ser desfeita.')) return;
+        deleteOrderMutation.mutate(orderId);
     };
 
     const formatDate = (dateString: string) => {
@@ -163,9 +196,9 @@ export function OrdersHistory() {
                                                     value={order.status}
                                                     onChange={(e) => handleStatusChange(order.id, e.target.value)}
                                                     className={`appearance-none bg-transparent pl-3 pr-8 py-1.5 rounded-full text-xs font-bold outline-none cursor-pointer border-2 transition-colors ${order.status === 'QUEUE' ? 'border-yellow-200 text-yellow-800 bg-yellow-50 hover:bg-yellow-100' :
-                                                            order.status === 'PREPARING' ? 'border-blue-200 text-blue-800 bg-blue-50 hover:bg-blue-100' :
-                                                                order.status === 'COMPLETED' ? 'border-green-200 text-green-800 bg-green-50 hover:bg-green-100' :
-                                                                    'border-red-200 text-red-800 bg-red-50 hover:bg-red-100'
+                                                        order.status === 'PREPARING' ? 'border-blue-200 text-blue-800 bg-blue-50 hover:bg-blue-100' :
+                                                            order.status === 'COMPLETED' ? 'border-green-200 text-green-800 bg-green-50 hover:bg-green-100' :
+                                                                'border-red-200 text-red-800 bg-red-50 hover:bg-red-100'
                                                         }`}
                                                 >
                                                     <option value="QUEUE">Na Fila</option>

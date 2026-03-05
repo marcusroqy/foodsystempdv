@@ -1,4 +1,3 @@
-import { type ReactElement } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Login } from './pages/Login';
@@ -11,18 +10,18 @@ import { Team } from './pages/Team';
 import { OrdersHistory } from './pages/OrdersHistory';
 import { Kitchen } from './pages/Kitchen';
 
-const PrivateRoute = ({ children }: { children: ReactElement }) => {
+const PrivateLayout = () => {
   const { isAuthenticated, isLoading, mustChangePassword } = useAuth();
   if (isLoading) return <div className="h-screen flex items-center justify-center bg-gray-50 text-primary-500 font-bold">Carregando Sessão...</div>;
   return isAuthenticated ? (
     <>
       {mustChangePassword && <ForcePasswordChangeModal />}
-      <DashboardLayout>{children}</DashboardLayout>
+      <DashboardLayout />
     </>
   ) : <Navigate to="/login" />;
 };
 
-const AdminRoute = ({ children }: { children: ReactElement }) => {
+const AdminLayout = () => {
   const { user, isAuthenticated, isLoading, mustChangePassword } = useAuth();
   if (isLoading) return <div className="h-screen flex items-center justify-center bg-gray-50 text-primary-500 font-bold">Carregando Sessão...</div>;
   if (!isAuthenticated) return <Navigate to="/login" />;
@@ -33,7 +32,7 @@ const AdminRoute = ({ children }: { children: ReactElement }) => {
   return isAdmin ? (
     <>
       {mustChangePassword && <ForcePasswordChangeModal />}
-      <DashboardLayout>{children}</DashboardLayout>
+      <DashboardLayout />
     </>
   ) : <Navigate to="/pdv" />;
 };
@@ -53,62 +52,18 @@ function AppRoutes() {
       <Route path="/" element={<DashboardRedirect />} />
 
       {/* Rotas Privadas */}
-      <Route
-        path="/pdv"
-        element={
-          <PrivateRoute>
-            <PDV />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/estoque"
-        element={
-          <PrivateRoute>
-            <Inventory />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/financeiro"
-        element={
-          <PrivateRoute>
-            <Finance />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/financeiro"
-        element={
-          <PrivateRoute>
-            <Finance />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/equipe"
-        element={
-          <AdminRoute>
-            <Team />
-          </AdminRoute>
-        }
-      />
-      <Route
-        path="/historico"
-        element={
-          <PrivateRoute>
-            <OrdersHistory />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/cozinha"
-        element={
-          <PrivateRoute>
-            <Kitchen />
-          </PrivateRoute>
-        }
-      />
+      <Route element={<PrivateLayout />}>
+        <Route path="/pdv" element={<PDV />} />
+        <Route path="/estoque" element={<Inventory />} />
+        <Route path="/financeiro" element={<Finance />} />
+        <Route path="/historico" element={<OrdersHistory />} />
+        <Route path="/cozinha" element={<Kitchen />} />
+      </Route>
+
+      {/* Rotas Administrativas */}
+      <Route element={<AdminLayout />}>
+        <Route path="/equipe" element={<Team />} />
+      </Route>
     </Routes>
   );
 }

@@ -1,10 +1,10 @@
-import { useState, type ReactNode } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Store, ShoppingCart, PackageSearch, PieChart, LogOut, Settings, Users, FileText, ChefHat } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 
-export function DashboardLayout({ children }: { children: ReactNode }) {
+export function DashboardLayout() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -84,7 +84,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
             {/* Main Content Area */}
             <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50/50 relative pb-20 md:pb-0">
-                {children}
+                <Outlet />
             </main>
 
             {/* Bottom Navigation (Mobile Only) */}

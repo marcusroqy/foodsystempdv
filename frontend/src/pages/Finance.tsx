@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Wallet, History, FileText, Plus, X } from 'lucide-react';
 import { api } from '../contexts/AuthContext';
 import { formatCurrency, parseCurrency } from '../utils/format';
@@ -13,44 +14,46 @@ interface Transaction {
 }
 
 export function Finance() {
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({ description: '', amount: '', type: 'INCOME', category: 'Vendas' });
+
+    const { data: transactions = [] } = useQuery({
+        queryKey: ['finance-data'],
+        queryFn: async () => {
+            const res = await api.get('/finances');
+            return res.data as Transaction[];
+        },
+        staleTime: 1000 * 60 * 5, // 5 minutes cache
+    });
 
     const totalIncome = transactions.filter(t => t.type === 'INCOME').reduce((acc, curr) => acc + curr.amount, 0);
     const totalExpense = transactions.filter(t => t.type === 'EXPENSE').reduce((acc, curr) => acc + curr.amount, 0);
     const balance = totalIncome - totalExpense;
 
-    const fetchFinances = async () => {
-        try {
-            const response = await api.get('/finances');
-            setTransactions(response.data);
-        } catch (err) {
-            console.error('Erro ao buscar finanças:', err);
-            setTransactions([]); // Fallback to empty real state
-        }
-    };
-
-    useEffect(() => {
-        fetchFinances();
-    }, []);
-
-    const handleSaveTransaction = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            await api.post('/finances', {
-                description: formData.description,
-                amount: parseCurrency(formData.amount),
-                type: formData.type,
-                category: formData.category
-            });
-            fetchFinances();
+    const createTransactionMutation = useMutation({
+        mutationFn: async (newTransaction: any) => {
+            return api.post('/finances', newTransaction);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['finance-data'] });
             setIsModalOpen(false);
             setFormData({ description: '', amount: '', type: 'INCOME', category: 'Vendas' });
-        } catch (error) {
+        },
+        onError: () => {
             alert('Erro ao salvar transação. O backend de finanças ainda está sendo implementado conectando o React...');
             setIsModalOpen(false);
         }
+    });
+
+    const handleSaveTransaction = (e: React.FormEvent) => {
+        e.preventDefault();
+        createTransactionMutation.mutate({
+            description: formData.description,
+            amount: parseCurrency(formData.amount),
+            type: formData.type,
+            category: formData.category
+        });
     };
 
     return (
