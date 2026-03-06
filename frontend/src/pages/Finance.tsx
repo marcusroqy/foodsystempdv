@@ -18,7 +18,7 @@ export function Finance() {
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [formData, setFormData] = useState({ description: '', amount: '', type: 'INCOME', category: 'Vendas' });
+    const [formData, setFormData] = useState({ description: '', amount: '', type: 'INCOME', category: 'Vendas', paymentMethod: 'Dinheiro' });
 
     const { data: transactions = [] } = useQuery({
         queryKey: ['finance-data'],
@@ -101,7 +101,7 @@ export function Finance() {
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingId(null);
-        setFormData({ description: '', amount: '', type: 'INCOME', category: 'Vendas' });
+        setFormData({ description: '', amount: '', type: 'INCOME', category: 'Vendas', paymentMethod: 'Dinheiro' });
     };
 
     const handleEdit = (transaction: Transaction) => {
@@ -110,7 +110,8 @@ export function Finance() {
             description: transaction.description,
             amount: transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
             type: transaction.type,
-            category: transaction.category
+            category: transaction.category,
+            paymentMethod: transaction.paymentMethod || 'Dinheiro'
         });
         setIsModalOpen(true);
     };
@@ -127,7 +128,8 @@ export function Finance() {
             description: formData.description,
             amount: parseCurrency(formData.amount),
             type: formData.type,
-            category: formData.category
+            category: formData.category,
+            paymentMethod: formData.type === 'INCOME' ? formData.paymentMethod : null
         };
 
         if (editingId) {
@@ -436,6 +438,18 @@ export function Finance() {
                                     </select>
                                 </div>
                             </div>
+
+                            {formData.type === 'INCOME' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento</label>
+                                    <select value={formData.paymentMethod} onChange={e => setFormData({ ...formData, paymentMethod: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white transition-all">
+                                        <option value="Dinheiro">Dinheiro</option>
+                                        <option value="PIX">PIX</option>
+                                        <option value="Cartão de Débito">Cartão de Débito</option>
+                                        <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                    </select>
+                                </div>
+                            )}
 
                             <div className="pt-4 flex gap-3">
                                 <button type="button" onClick={closeModal} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
