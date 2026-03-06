@@ -81,7 +81,7 @@ export function DeliveryApp() {
                                             Pedido #{order.id.slice(-4).toUpperCase()}
                                         </h3>
                                         <span className="text-xs text-gray-500 font-medium">
-                                            {order.orderType === 'DELIVERY' ? 'Entrega' : 'Retirada'} • R$ {Number(order.totalAmount).toFixed(2)}
+                                            {order.orderType === 'DELIVERY' ? 'Vou Receber em Casa' : 'Vou Retirar no Balcão'} • R$ {Number(order.totalAmount).toFixed(2)}
                                         </span>
                                     </div>
                                     {order.status === 'QUEUE' && (
@@ -90,8 +90,11 @@ export function DeliveryApp() {
                                     {order.status === 'PREPARING' && (
                                         <span className="bg-blue-100 text-blue-800 text-[10px] uppercase font-bold px-3 py-1 rounded-full flex gap-1.5 items-center"><PlayCircle className="w-3 h-3 animate-pulse" /> Preparando</span>
                                     )}
-                                    {order.status === 'COMPLETED' && (
-                                        <span className="bg-green-100 text-green-800 text-[10px] uppercase font-bold px-3 py-1 rounded-full flex gap-1.5 items-center"><CheckCircle2 className="w-3 h-3" /> Pronto</span>
+                                    {order.status === 'COMPLETED' && order.orderType === 'DELIVERY' && (
+                                        <span className="bg-green-100 text-green-800 text-[10px] uppercase font-bold px-3 py-1 rounded-full flex gap-1.5 items-center"><CheckCircle2 className="w-3 h-3" /> Saiu p/ Entrega</span>
+                                    )}
+                                    {order.status === 'COMPLETED' && order.orderType !== 'DELIVERY' && (
+                                        <span className="bg-green-100 text-green-800 text-[10px] uppercase font-bold px-3 py-1 rounded-full flex gap-1.5 items-center"><CheckCircle2 className="w-3 h-3" /> Pronto p/ Retirar</span>
                                     )}
                                 </div>
                                 <div className="space-y-1.5">

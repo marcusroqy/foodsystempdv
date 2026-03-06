@@ -249,8 +249,8 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                             <div className="bg-white border rounded-xl p-4 shadow-sm">
                                 <h3 className="font-bold text-gray-900 mb-3">Opção de Entrega</h3>
                                 <div className="flex bg-gray-100 p-1 rounded-lg">
-                                    <button onClick={() => setOrderType('DELIVERY')} className={`flex-1 py-2 font-bold text-sm rounded-md transition ${orderType === 'DELIVERY' ? 'bg-white shadow-sm text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Delivery</button>
-                                    <button onClick={() => setOrderType('PICKUP')} className={`flex-1 py-2 font-bold text-sm rounded-md transition ${orderType === 'PICKUP' ? 'bg-white shadow-sm text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Retirada</button>
+                                    <button onClick={() => setOrderType('DELIVERY')} className={`flex-1 py-2 font-bold text-sm lg:text-base rounded-md transition ${orderType === 'DELIVERY' ? 'bg-white shadow-sm text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Delivery</button>
+                                    <button onClick={() => setOrderType('PICKUP')} className={`flex-1 py-2 font-bold text-sm lg:text-base rounded-md transition ${orderType === 'PICKUP' ? 'bg-white shadow-sm text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Retirar no Balcão</button>
                                 </div>
 
                                 {orderType === 'DELIVERY' && (
