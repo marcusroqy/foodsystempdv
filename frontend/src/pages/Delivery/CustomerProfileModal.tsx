@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+
 import { User, LogOut, Key, Save, X, Lock, Phone } from 'lucide-react';
 import { api } from '../../contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,8 +11,8 @@ interface CustomerProfileModalProps {
 }
 
 export function CustomerProfileModal({ isOpen, onClose, slug }: CustomerProfileModalProps) {
-    const { token, logoutCustomer } = useAuth();
     const queryClient = useQueryClient();
+    const token = localStorage.getItem('@FoodSystem:CustomerToken');
 
     const [name, setName] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
@@ -216,8 +216,9 @@ export function CustomerProfileModal({ isOpen, onClose, slug }: CustomerProfileM
                     <button
                         onClick={() => {
                             if (window.confirm('Tem certeza que deseja sair? Você precisará fazer login novamente para acompanhar os pedidos.')) {
-                                logoutCustomer();
-                                onClose();
+                                localStorage.removeItem('@FoodSystem:CustomerToken');
+                                localStorage.removeItem('@FoodSystem:Customer');
+                                window.location.reload();
                             }
                         }}
                         className="py-4 bg-gray-50 text-red-500 hover:bg-red-50 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors border border-gray-200 hover:border-red-200"
