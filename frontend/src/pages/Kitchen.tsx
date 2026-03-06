@@ -133,63 +133,107 @@ export function Kitchen() {
         return localStorage.getItem('kds-audio-enabled') === 'true';
     });
     const knownOrderIds = useRef<Set<string>>(new Set());
-    // Ref para manter o AudioContext vivo
-    const audioCtxRef = useRef<AudioContext | null>(null);
+    const isFirstLoad = useRef(true);
 
-    // Auto-initialize AudioContext on mount if previously enabled
+    // Request browser notification permission on mount
     useEffect(() => {
-        if (isAudioEnabled && !audioCtxRef.current) {
-            try {
-                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-                const ctx = new AudioContextClass();
-                ctx.resume().then(() => {
-                    audioCtxRef.current = ctx;
-                });
-            } catch (e) {
-                console.error('Erro ao inicializar AudioContext automaticamente:', e);
-            }
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
         }
     }, []);
 
-    // Som de Notificação
+    // Reliable notification sound using Audio element (works on all browsers/mobile)
     const playNotificationSound = () => {
-        if (!isAudioEnabled || !audioCtxRef.current) return;
+        if (!isAudioEnabled) return;
 
         try {
-            const ctx = audioCtxRef.current;
-            if (ctx.state === 'suspended') {
-                ctx.resume();
+            // 1. Play a beep sound using Audio element (most reliable cross-browser approach)
+            // This is a short WAV beep encoded as base64 data URI
+            const beepAudio = new Audio('data:audio/wav;base64,UklGRl9vT19teleQVZBVkUZbQAAAAAAQACABAAACAAEACAAAAZGF0YQUA');
+
+            // Fallback: use oscillator-based beep via AudioContext
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioContextClass) {
+                const ctx = new AudioContextClass();
+                ctx.resume().then(() => {
+                    // Triple beep for urgency
+                    const playBeep = (startTime: number, freq: number) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.frequency.setValueAtTime(freq, startTime);
+                        gain.gain.setValueAtTime(0.6, startTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.15);
+                        osc.start(startTime);
+                        osc.stop(startTime + 0.15);
+                    };
+
+                    playBeep(ctx.currentTime, 880);
+                    playBeep(ctx.currentTime + 0.2, 988);
+                    playBeep(ctx.currentTime + 0.4, 1100);
+
+                    // Speech synthesis after beeps
+                    setTimeout(() => {
+                        try {
+                            const msg = new SpeechSynthesisUtterance('Novo pedido na cozinha!');
+                            msg.lang = 'pt-BR';
+                            msg.rate = 1.1;
+                            msg.volume = 1;
+                            window.speechSynthesis.speak(msg);
+                        } catch (e) {
+                            // Speech not available, beep was enough
+                        }
+                    }, 700);
+
+                    // Auto-close context after sounds are done
+                    setTimeout(() => ctx.close(), 3000);
+                });
             }
 
-            const osc = ctx.createOscillator();
-            const gainNode = ctx.createGain();
-
-            osc.connect(gainNode);
-            gainNode.connect(ctx.destination);
-
-            osc.frequency.setValueAtTime(800, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
-
-            gainNode.gain.setValueAtTime(0, ctx.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.5);
-
-            setTimeout(() => {
-                const msg = new SpeechSynthesisUtterance('Novo pedido na cozinha!');
-                msg.lang = 'pt-BR';
-                msg.rate = 1.1;
-                window.speechSynthesis.speak(msg);
-            }, 600);
+            // Also try the simple Audio element as backup
+            beepAudio.volume = 1;
+            beepAudio.play().catch(() => { /* silent fail if audio policy blocks it */ });
 
         } catch (e) {
             console.error('Erro ao reproduzir áudio:', e);
         }
     };
 
-    // React Query puxando os pedidos ativos
+    // Show browser notification (with system sound)
+    const showBrowserNotification = (newOrderCount: number) => {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+                const notification = new Notification('🛎️ Novo Pedido na Cozinha!', {
+                    body: `${newOrderCount} novo(s) pedido(s) chegaram. Toque para ver.`,
+                    icon: '/pwa-icon.svg',
+                    tag: 'kitchen-new-order', // Prevents multiple notifications stacking
+                    requireInteraction: true,
+                });
+
+                notification.onclick = () => {
+                    window.focus();
+                    notification.close();
+                };
+
+                // Auto-close after 10 seconds
+                setTimeout(() => notification.close(), 10000);
+            } catch (e) {
+                // Fallback: Service Worker notification
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.ready.then(reg => {
+                        reg.showNotification('🛎️ Novo Pedido na Cozinha!', {
+                            body: `${newOrderCount} novo(s) pedido(s) chegaram.`,
+                            icon: '/pwa-icon.svg',
+                            tag: 'kitchen-new-order',
+                        });
+                    });
+                }
+            }
+        }
+    };
+
+    // React Query puxando os pedidos ativos (polling a cada 5 segundos)
     const { data: orders = [], isLoading: loading } = useQuery({
         queryKey: ['kitchen-orders'],
         queryFn: async () => {
@@ -199,11 +243,15 @@ export function Kitchen() {
             // Ordenar por data de criação (mais antigos primeiro)
             activeOrders.sort((a: Order, b: Order) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-            // Avaliar se há um pedido novo para tocar BEEP
-            if (knownOrderIds.current.size > 0 && activeOrders.length > 0) {
-                const hasNewOrders = activeOrders.some((o: Order) => !knownOrderIds.current.has(o.id));
-                if (hasNewOrders) {
+            // Skip notification on first load (avoid alert storm on page open)
+            if (isFirstLoad.current) {
+                isFirstLoad.current = false;
+            } else if (knownOrderIds.current.size > 0 || activeOrders.length > 0) {
+                const newOrders = activeOrders.filter((o: Order) => !knownOrderIds.current.has(o.id));
+                if (newOrders.length > 0) {
+                    // Play sound + show browser notification
                     playNotificationSound();
+                    showBrowserNotification(newOrders.length);
                 }
             }
 
@@ -214,7 +262,7 @@ export function Kitchen() {
 
             return activeOrders as Order[];
         },
-        refetchInterval: 15000, // Substitui o setInterval (Polling automágico)
+        refetchInterval: 5000, // Polling a cada 5 segundos para detecção rápida
     });
 
     const updateStatusMutation = useMutation({
@@ -269,32 +317,40 @@ export function Kitchen() {
                     <button
                         onClick={() => {
                             if (!isAudioEnabled) {
-                                // Request permission/initial interaction to unlock Audio API
-                                const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-                                const ctx = new AudioContext();
-                                ctx.resume().then(() => {
-                                    audioCtxRef.current = ctx;
+                                // Request notification permission
+                                if ('Notification' in window && Notification.permission === 'default') {
+                                    Notification.requestPermission();
+                                }
 
-                                    // Play silent beep to unlock iOS Safari
-                                    const osc = ctx.createOscillator();
-                                    osc.connect(ctx.destination);
-                                    osc.start();
-                                    osc.stop(ctx.currentTime + 0.01);
+                                // Play a test beep to confirm audio works (also unlocks audio on iOS)
+                                try {
+                                    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+                                    const ctx = new AudioContextClass();
+                                    ctx.resume().then(() => {
+                                        const osc = ctx.createOscillator();
+                                        const gain = ctx.createGain();
+                                        osc.connect(gain);
+                                        gain.connect(ctx.destination);
+                                        osc.frequency.setValueAtTime(880, ctx.currentTime);
+                                        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                                        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                                        osc.start(ctx.currentTime);
+                                        osc.stop(ctx.currentTime + 0.2);
+                                        setTimeout(() => ctx.close(), 1000);
+                                    });
+                                } catch (e) { /* ok */ }
 
-                                    // Unlock SpeechSynthesis
+                                // Unlock SpeechSynthesis
+                                try {
                                     const msg = new SpeechSynthesisUtterance('');
                                     window.speechSynthesis.speak(msg);
+                                } catch (e) { /* ok */ }
 
-                                    setIsAudioEnabled(true);
-                                    localStorage.setItem('kds-audio-enabled', 'true');
-                                });
+                                setIsAudioEnabled(true);
+                                localStorage.setItem('kds-audio-enabled', 'true');
                             } else {
                                 setIsAudioEnabled(false);
                                 localStorage.setItem('kds-audio-enabled', 'false');
-                                if (audioCtxRef.current) {
-                                    audioCtxRef.current.suspend();
-                                    audioCtxRef.current = null;
-                                }
                             }
                         }}
                         className={`flex items-center justify-center p-3 rounded-2xl transition-all shadow-sm ${isAudioEnabled
