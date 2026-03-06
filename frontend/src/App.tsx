@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DeliveryProvider } from './contexts/DeliveryContext';
 import { Login } from './pages/Login';
 
 import { DashboardLayout } from './components/DashboardLayout';
@@ -44,12 +45,20 @@ const DashboardRedirect = () => {
 };
 
 import { PDV } from './pages/PDV';
+import { DeliveryApp } from './pages/Delivery/DeliveryApp';
 
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<DashboardRedirect />} />
+
+      {/* Rota do App de Delivery */}
+      <Route path="/d/:slug/*" element={
+        <DeliveryProvider>
+          <DeliveryApp />
+        </DeliveryProvider>
+      } />
 
       {/* Rotas Privadas */}
       <Route element={<PrivateLayout />}>
