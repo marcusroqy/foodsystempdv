@@ -9,6 +9,7 @@ categoryRouter.use(authMiddleware);
 
 categoryRouter.get('/', categoryController.list);
 categoryRouter.post('/', categoryController.create);
+categoryRouter.put('/:id', categoryController.update);
 categoryRouter.delete('/:id', categoryController.delete);
 
 export default categoryRouter;

@@ -18,6 +18,14 @@ export class CategoryService {
         });
     }
 
+    async updateCategory(tenantId: string, id: string, name: string) {
+        const prisma = getTenantPrisma(tenantId);
+        return prisma.category.update({
+            where: { id },
+            data: { name }
+        });
+    }
+
     async deleteCategory(tenantId: string, id: string) {
         const prisma = getTenantPrisma(tenantId);
         return prisma.category.delete({

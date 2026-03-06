@@ -31,6 +31,20 @@ export class CategoryController {
         }
     };
 
+    update = async (req: Request, res: Response) => {
+        try {
+            const tenantId = req.user?.tenantId;
+            if (!tenantId) return res.status(401).json({ error: 'Tenant missing' });
+
+            const id = req.params.id as string;
+            const { name } = req.body;
+            const category = await this.categoryService.updateCategory(tenantId, id, name);
+            return res.json(category);
+        } catch (error: any) {
+            return res.status(400).json({ error: error.message });
+        }
+    };
+
     delete = async (req: Request, res: Response) => {
         try {
             const tenantId = req.user?.tenantId;

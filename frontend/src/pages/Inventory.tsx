@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, ArrowUpRight, ArrowDownRight, Search, AlertTriangle, Activity, PieChart, PackageSearch, X, Edit2, Loader2, Plus } from 'lucide-react';
+import { Package, ArrowUpRight, ArrowDownRight, Search, AlertTriangle, Activity, PieChart, PackageSearch, X, Edit2, Loader2, Plus, Trash2, Check, Settings } from 'lucide-react';
 import { api } from '../contexts/AuthContext';
 import { formatQuantity, parseQuantity } from '../utils/format';
 
@@ -78,6 +78,10 @@ export function Inventory() {
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
 
+    // Category edit state
+    const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+    const [editingCategoryName, setEditingCategoryName] = useState('');
+
     const openAdjustModal = (item: StockItem) => {
         setSelectedItem(item);
         setAdjustForm({ type: 'IN', quantity: '', reason: 'Ajuste Manual' });
@@ -154,7 +158,7 @@ export function Inventory() {
         mutationFn: async (data: any) => api.post('/categories', data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['inventory-data'] });
-            setIsCategoryModalOpen(false);
+            queryClient.invalidateQueries({ queryKey: ['pdv-data'] });
             setNewCategoryName('');
         },
         onError: () => alert('Erro ao criar categoria.')
@@ -165,6 +169,25 @@ export function Inventory() {
         createCategoryMutation.mutate({ name: newCategoryName.trim(), type: 'INVENTORY' });
     };
 
+    const updateCategoryMutation = useMutation({
+        mutationFn: async ({ id, name }: { id: string, name: string }) => api.put(`/categories/${id}`, { name }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['inventory-data'] });
+            queryClient.invalidateQueries({ queryKey: ['pdv-data'] });
+            setEditingCategoryId(null);
+        },
+        onError: () => alert('Erro ao renomear categoria.')
+    });
+
+    const deleteCategoryMutation = useMutation({
+        mutationFn: async (id: string) => api.delete(`/categories/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['inventory-data'] });
+            queryClient.invalidateQueries({ queryKey: ['pdv-data'] });
+        },
+        onError: () => alert('Erro ao excluir categoria. Verifique se não há itens vinculados.')
+    });
+
     return (
         <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
             {/* Cabeçalho */}
@@ -174,6 +197,13 @@ export function Inventory() {
                     <p className="text-gray-500 mt-1">Gerencie os insumos da sua operação em tempo real.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => { setIsCategoryModalOpen(true); setEditingCategoryId(null); setNewCategoryName(''); }}
+                        className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-gray-50 font-medium transition-all shadow-sm"
+                    >
+                        <Settings className="w-4 h-4 text-gray-500" />
+                        Categorias
+                    </button>
                     <button className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-gray-50 font-medium transition-all shadow-sm">
                         <ArrowDownRight className="w-4 h-4 text-red-500" />
                         Saída (Perda)
@@ -536,35 +566,95 @@ export function Inventory() {
                 </div>
             )}
 
-            {/* Modal para Nova Categoria de Estoque */}
+            {/* Modal de Gerenciar Categorias */}
             {isCategoryModalOpen && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                         <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <h2 className="text-lg font-bold text-gray-800">Nova Categoria de Insumo</h2>
-                            <button onClick={() => setIsCategoryModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                <Settings className="w-5 h-5 text-primary-500" /> Gerenciar Categorias
+                            </h2>
+                            <button onClick={() => { setIsCategoryModalOpen(false); setEditingCategoryId(null); }} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        <form onSubmit={handleCreateCategory} className="p-5 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Categoria</label>
-                                <input
-                                    type="text" required autoFocus
-                                    value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-                                    placeholder="Ex: Embalagens, Bebidas..."
-                                />
+                        <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+                            {/* Lista de categorias existentes */}
+                            <div className="space-y-2">
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Categorias Existentes</label>
+                                {dbCategories.length === 0 && (
+                                    <p className="text-sm text-gray-400 py-3 text-center">Nenhuma categoria cadastrada.</p>
+                                )}
+                                {dbCategories.map(cat => (
+                                    <div key={cat.id} className="flex items-center gap-2 p-2 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors bg-white">
+                                        {editingCategoryId === cat.id ? (
+                                            <>
+                                                <input
+                                                    type="text" autoFocus
+                                                    value={editingCategoryName}
+                                                    onChange={e => setEditingCategoryName(e.target.value)}
+                                                    onKeyDown={e => { if (e.key === 'Enter' && editingCategoryName.trim()) updateCategoryMutation.mutate({ id: cat.id, name: editingCategoryName.trim() }); if (e.key === 'Escape') setEditingCategoryId(null); }}
+                                                    className="flex-1 px-3 py-1.5 border border-primary-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                                                />
+                                                <button
+                                                    onClick={() => { if (editingCategoryName.trim()) updateCategoryMutation.mutate({ id: cat.id, name: editingCategoryName.trim() }); }}
+                                                    className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                    title="Salvar"
+                                                >
+                                                    <Check className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => setEditingCategoryId(null)}
+                                                    className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors"
+                                                    title="Cancelar"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="flex-1 text-sm font-medium text-gray-800 px-2">{cat.name}</span>
+                                                <button
+                                                    onClick={() => { setEditingCategoryId(cat.id); setEditingCategoryName(cat.name); }}
+                                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="Renomear"
+                                                >
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => { if (confirm(`Excluir a categoria "${cat.name}"? Os itens não serão deletados.`)) deleteCategoryMutation.mutate(cat.id); }}
+                                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
-                            <div className="pt-2 flex gap-3">
-                                <button type="button" onClick={() => setIsCategoryModalOpen(false)} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">
-                                    Cancelar
-                                </button>
-                                <button type="submit" className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg font-bold hover:bg-primary-600 transition-colors text-sm">
-                                    Criar Categoria
-                                </button>
+
+                            {/* Criar nova categoria */}
+                            <div className="border-t border-gray-100 pt-4">
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Adicionar Nova</label>
+                                <form onSubmit={handleCreateCategory} className="flex gap-2">
+                                    <input
+                                        type="text" required
+                                        value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
+                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm"
+                                        placeholder="Ex: Embalagens, Bebidas..."
+                                    />
+                                    <button type="submit" className="px-4 py-2 bg-primary-500 text-white rounded-lg font-bold hover:bg-primary-600 transition-colors text-sm whitespace-nowrap">
+                                        <Plus className="w-4 h-4" />
+                                    </button>
+                                </form>
                             </div>
-                        </form>
+                        </div>
+                        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
+                            <button onClick={() => { setIsCategoryModalOpen(false); setEditingCategoryId(null); }} className="w-full px-4 py-2 text-gray-600 bg-white border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors text-sm">
+                                Fechar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
