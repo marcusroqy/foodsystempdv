@@ -75,6 +75,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 const publicVapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
                 if (!publicVapidKey) throw new Error('Chave VAPID não configurada no frontend. (.env)');
 
+                // Unsubscribe any stale subscription (e.g. from an old VAPID key)
+                const existingSub = await registration.pushManager.getSubscription();
+                if (existingSub) {
+                    await existingSub.unsubscribe();
+                }
+
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
