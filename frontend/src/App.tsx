@@ -10,6 +10,7 @@ import { Finance } from './pages/Finance';
 import { Team } from './pages/Team';
 import { OrdersHistory } from './pages/OrdersHistory';
 import { Kitchen } from './pages/Kitchen';
+import { DeliveryDriver } from './pages/DeliveryDriver';
 
 const PrivateLayout = () => {
   const { isAuthenticated, isLoading, mustChangePassword } = useAuth();
@@ -67,6 +68,7 @@ function AppRoutes() {
         <Route path="/financeiro" element={<Finance />} />
         <Route path="/historico" element={<OrdersHistory />} />
         <Route path="/cozinha" element={<Kitchen />} />
+        <Route path="/entregador" element={<DeliveryDriver />} />
       </Route>
 
       {/* Rotas Administrativas */}

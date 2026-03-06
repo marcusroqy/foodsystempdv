@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================================================
@@ -226,6 +227,7 @@ model Order {
 enum OrderStatus {
   QUEUE         // Na Fila
   PREPARING     // Preparando na cozinha
+  READY         // Pronto / Na Expedicao (Aguardando Entregador)
   DISPATCHED    // Saiu para entrega (para delivery)
   COMPLETED     // Entregue / Concluído
   CANCELED      // Cancelado

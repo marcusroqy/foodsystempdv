@@ -125,10 +125,17 @@ function OrderTicket({ order, onUpdateStatus }: { order: Order, onUpdateStatus: 
                     </button>
                 ) : (
                     <button
-                        onClick={() => onUpdateStatus(order.id, 'COMPLETED')}
-                        className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black text-lg uppercase tracking-wider transition-all shadow-md shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-3"
+                        onClick={() => {
+                            // Se for Delivery manda para expedição. Balcão vai para concluído direto.
+                            const nextStatus = order.orderType === 'DELIVERY' ? 'READY' : 'COMPLETED';
+                            onUpdateStatus(order.id, nextStatus);
+                        }}
+                        className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black text-xs md:text-sm uppercase tracking-wider transition-all shadow-md shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-3"
                     >
-                        <CheckCircle2 className="w-6 h-6" /> Pronto (Saída)
+                        <CheckCircle2 className="w-6 h-6 shrink-0" />
+                        <span className="font-bold flex-1 text-left line-clamp-2 leading-tight">
+                            {order.orderType === 'DELIVERY' ? 'Pronto (Expedição / Motoboy)' : 'Entregar (Balcão/Mesa)'}
+                        </span>
                     </button>
                 )}
             </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Store, ShoppingCart, PackageSearch, PieChart, LogOut, Settings, Users, FileText, ChefHat } from 'lucide-react';
+import { Store, ShoppingCart, PackageSearch, PieChart, LogOut, Settings, Users, FileText, ChefHat, Navigation } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 
 export function DashboardLayout() {
@@ -18,6 +18,7 @@ export function DashboardLayout() {
         { path: '/cozinha', icon: ChefHat, label: 'Cozinha' },
         { path: '/estoque', icon: PackageSearch, label: 'Estoque' },
         { path: '/financeiro', icon: PieChart, label: 'Financeiro' },
+        { path: '/entregador', icon: Navigation, label: 'Entregador' },
         ...(isAdmin ? [{ path: '/equipe', icon: Users, label: 'Equipe & Acessos' }] : []),
     ];
 

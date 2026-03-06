@@ -4,7 +4,7 @@ import { useDelivery } from '../../contexts/DeliveryContext';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../contexts/AuthContext';
 import type { DeliveryCategory, DeliveryProduct } from '../../contexts/DeliveryContext';
-import { X, Plus, Minus, ShoppingBag, Clock, CheckCircle2, PlayCircle } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, Clock, CheckCircle2, PlayCircle, Package, Navigation } from 'lucide-react';
 import { CheckoutModal } from './CheckoutModal';
 
 export function DeliveryApp() {
@@ -31,8 +31,8 @@ export function DeliveryApp() {
             const res = await api.get(`/delivery/${slug}/orders`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            // We only care about active ongoing orders for the top tracker
-            return res.data.filter((o: any) => o.status !== 'CANCELED');
+            // Hides CANCELED and COMPLETED (Entregue) after some time, but keeps active ones.
+            return res.data.filter((o: any) => o.status !== 'CANCELED' && o.status !== 'COMPLETED');
         },
         enabled: !!slug && !!token && !!customer,
         refetchInterval: 15000 // Polling every 15s to see if kitchen prepared it
@@ -90,8 +90,11 @@ export function DeliveryApp() {
                                     {order.status === 'PREPARING' && (
                                         <span className="bg-blue-100 text-blue-800 text-[10px] uppercase font-bold px-3 py-1 rounded-full flex gap-1.5 items-center"><PlayCircle className="w-3 h-3 animate-pulse" /> Preparando</span>
                                     )}
-                                    {order.status === 'COMPLETED' && order.orderType === 'DELIVERY' && (
-                                        <span className="bg-green-100 text-green-800 text-[10px] uppercase font-bold px-3 py-1 rounded-full flex gap-1.5 items-center"><CheckCircle2 className="w-3 h-3" /> Saiu p/ Entrega</span>
+                                    {order.status === 'READY' && order.orderType === 'DELIVERY' && (
+                                        <span className="bg-orange-100 text-orange-800 text-[10px] uppercase font-bold px-3 py-1 rounded-full flex gap-1.5 items-center"><Package className="w-3 h-3" /> Pronto (Expedição)</span>
+                                    )}
+                                    {order.status === 'DISPATCHED' && order.orderType === 'DELIVERY' && (
+                                        <span className="bg-indigo-100 text-indigo-800 text-[10px] uppercase font-bold px-3 py-1 rounded-full flex gap-1.5 items-center"><Navigation className="w-3 h-3" /> Saiu p/ Entrega</span>
                                     )}
                                     {order.status === 'COMPLETED' && order.orderType !== 'DELIVERY' && (
                                         <span className="bg-green-100 text-green-800 text-[10px] uppercase font-bold px-3 py-1 rounded-full flex gap-1.5 items-center"><CheckCircle2 className="w-3 h-3" /> Pronto p/ Retirar</span>

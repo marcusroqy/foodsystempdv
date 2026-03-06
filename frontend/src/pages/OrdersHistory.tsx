@@ -19,7 +19,7 @@ interface OrderItem {
 interface Order {
     id: string;
     customerName: string | null;
-    status: 'QUEUE' | 'PREPARING' | 'COMPLETED' | 'CANCELED';
+    status: 'QUEUE' | 'PREPARING' | 'READY' | 'DISPATCHED' | 'COMPLETED' | 'CANCELED';
     totalAmount: string | number;
     createdAt: string;
     orderType?: 'DELIVERY' | 'PICKUP' | 'TABLE' | null;
@@ -27,16 +27,20 @@ interface Order {
     items: OrderItem[];
 }
 
-const statusColors = {
+const statusColors: Record<string, string> = {
     QUEUE: 'bg-yellow-100 text-yellow-800',
     PREPARING: 'bg-blue-100 text-blue-800',
+    READY: 'bg-orange-100 text-orange-800',
+    DISPATCHED: 'bg-indigo-100 text-indigo-800',
     COMPLETED: 'bg-green-100 text-green-800',
     CANCELED: 'bg-red-100 text-red-800'
 };
 
-const statusLabels = {
+const statusLabels: Record<string, string> = {
     QUEUE: 'Na Fila',
     PREPARING: 'Preparando',
+    READY: 'Expedição',
+    DISPATCHED: 'Em Rota',
     COMPLETED: 'Concluído',
     CANCELED: 'Cancelado'
 };
@@ -209,12 +213,16 @@ export function OrdersHistory() {
                                                     onChange={(e) => handleStatusChange(order.id, e.target.value)}
                                                     className={`appearance-none bg-transparent pl-3 pr-8 py-1.5 rounded-full text-xs font-bold outline-none cursor-pointer border-2 transition-colors ${order.status === 'QUEUE' ? 'border-yellow-200 text-yellow-800 bg-yellow-50 hover:bg-yellow-100' :
                                                         order.status === 'PREPARING' ? 'border-blue-200 text-blue-800 bg-blue-50 hover:bg-blue-100' :
-                                                            order.status === 'COMPLETED' ? 'border-green-200 text-green-800 bg-green-50 hover:bg-green-100' :
-                                                                'border-red-200 text-red-800 bg-red-50 hover:bg-red-100'
+                                                            order.status === 'READY' ? 'border-orange-200 text-orange-800 bg-orange-50 hover:bg-orange-100' :
+                                                                order.status === 'DISPATCHED' ? 'border-indigo-200 text-indigo-800 bg-indigo-50 hover:bg-indigo-100' :
+                                                                    order.status === 'COMPLETED' ? 'border-green-200 text-green-800 bg-green-50 hover:bg-green-100' :
+                                                                        'border-red-200 text-red-800 bg-red-50 hover:bg-red-100'
                                                         }`}
                                                 >
                                                     <option value="QUEUE">Na Fila</option>
                                                     <option value="PREPARING">Preparando</option>
+                                                    <option value="READY">Expedição</option>
+                                                    <option value="DISPATCHED">Em Rota</option>
                                                     <option value="COMPLETED">Concluído</option>
                                                     <option value="CANCELED">Cancelado</option>
                                                 </select>

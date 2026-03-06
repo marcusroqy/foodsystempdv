@@ -153,7 +153,7 @@ export class OrderService {
         return order;
     }
 
-    async updateOrderStatus(tenantId: string, id: string, status: 'QUEUE' | 'PREPARING' | 'COMPLETED' | 'CANCELED') {
+    async updateOrderStatus(tenantId: string, id: string, status: 'QUEUE' | 'PREPARING' | 'READY' | 'DISPATCHED' | 'COMPLETED' | 'CANCELED') {
         const prisma = getTenantPrisma(tenantId);
         const order = await prisma.order.update({
             where: { id },
