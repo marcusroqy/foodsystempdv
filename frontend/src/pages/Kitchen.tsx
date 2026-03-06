@@ -129,10 +129,27 @@ function OrderTicket({ order, onUpdateStatus }: { order: Order, onUpdateStatus: 
 
 export function Kitchen() {
     const queryClient = useQueryClient();
-    const [isAudioEnabled, setIsAudioEnabled] = useState(false);
+    const [isAudioEnabled, setIsAudioEnabled] = useState(() => {
+        return localStorage.getItem('kds-audio-enabled') === 'true';
+    });
     const knownOrderIds = useRef<Set<string>>(new Set());
     // Ref para manter o AudioContext vivo
     const audioCtxRef = useRef<AudioContext | null>(null);
+
+    // Auto-initialize AudioContext on mount if previously enabled
+    useEffect(() => {
+        if (isAudioEnabled && !audioCtxRef.current) {
+            try {
+                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+                const ctx = new AudioContextClass();
+                ctx.resume().then(() => {
+                    audioCtxRef.current = ctx;
+                });
+            } catch (e) {
+                console.error('Erro ao inicializar AudioContext automaticamente:', e);
+            }
+        }
+    }, []);
 
     // Som de Notificação
     const playNotificationSound = () => {
@@ -269,9 +286,11 @@ export function Kitchen() {
                                     window.speechSynthesis.speak(msg);
 
                                     setIsAudioEnabled(true);
+                                    localStorage.setItem('kds-audio-enabled', 'true');
                                 });
                             } else {
                                 setIsAudioEnabled(false);
+                                localStorage.setItem('kds-audio-enabled', 'false');
                                 if (audioCtxRef.current) {
                                     audioCtxRef.current.suspend();
                                     audioCtxRef.current = null;
