@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useDelivery } from '../../contexts/DeliveryContext';
 import { api } from '../../contexts/AuthContext';
+import { useParams } from 'react-router-dom';
 import { X, UserRound, ArrowRight, Loader2, MapPin } from 'lucide-react';
 
 interface CheckoutModalProps {
@@ -9,7 +10,8 @@ interface CheckoutModalProps {
 }
 
 export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
-    const { tenant, cart, cartTotal, customer, login, logout, clearCart } = useDelivery();
+    const { slug } = useParams();
+    const { cart, cartTotal, customer, login, logout, clearCart } = useDelivery();
     if (!isOpen) return null;
 
     // View States: 'AUTH_PHONE' | 'AUTH_REGISTER' | 'AUTH_LOGIN' | 'CHECKOUT'
@@ -49,7 +51,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
         setIsLoading(true);
         setError('');
         try {
-            const res = await api.post(`/delivery/${tenant.slug}/auth/login`, { phone, password });
+            const res = await api.post(`/delivery/${slug}/auth/login`, { phone, password });
             login(res.data.token, res.data.customer);
             setView('CHECKOUT');
         } catch (err: any) {
@@ -64,7 +66,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
         setIsLoading(true);
         setError('');
         try {
-            const res = await api.post(`/delivery/${tenant.slug}/auth/register`, {
+            const res = await api.post(`/delivery/${slug}/auth/register`, {
                 name, phone, password, street, number, neighborhood
             });
             login(res.data.token, res.data.customer);
@@ -104,7 +106,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
             };
 
             const token = localStorage.getItem('@FoodSystem:CustomerToken');
-            await api.post(`/delivery/${tenant.slug}/orders`, payload, {
+            await api.post(`/delivery/${slug}/orders`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
