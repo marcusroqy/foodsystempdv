@@ -189,7 +189,7 @@ export function OrdersHistory() {
                                                         )}
                                                         {order.orderType === 'PICKUP' && (
                                                             <span className="ml-2 bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider">
-                                                                Retirada
+                                                                Balcão
                                                             </span>
                                                         )}
                                                     </div>

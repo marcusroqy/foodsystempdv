@@ -19,6 +19,7 @@ interface Order {
     customerName: string | null;
     status: 'QUEUE' | 'PREPARING' | 'COMPLETED' | 'CANCELED';
     createdAt: string;
+    orderType?: 'DELIVERY' | 'PICKUP' | 'TABLE' | null;
     items: OrderItem[];
 }
 
@@ -70,6 +71,14 @@ function OrderTicket({ order, onUpdateStatus }: { order: Order, onUpdateStatus: 
                     <p className="text-sm font-bold text-gray-500 truncate max-w-[160px]">
                         {order.customerName || 'Balcão'}
                     </p>
+                    <div className="mt-1 flex gap-1">
+                        {order.orderType === 'DELIVERY' && (
+                            <span className="bg-blue-100 text-blue-800 text-[10px] uppercase font-bold px-2 py-0.5 rounded-md">Delivery</span>
+                        )}
+                        {order.orderType === 'PICKUP' && (
+                            <span className="bg-purple-100 text-purple-800 text-[10px] uppercase font-bold px-2 py-0.5 rounded-md">Balcão</span>
+                        )}
+                    </div>
                 </div>
 
                 {/* Timer Real-Time Grande */}
