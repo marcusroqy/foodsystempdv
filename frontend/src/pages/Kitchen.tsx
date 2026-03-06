@@ -135,6 +135,9 @@ export function Kitchen() {
     const knownOrderIds = useRef<Set<string>>(new Set());
     const isFirstLoad = useRef(true);
 
+    // Pre-unlocked Audio element ref — created on user gesture, reused on polling
+    const beepAudioRef = useRef<HTMLAudioElement | null>(null);
+
     // Request browser notification permission on mount
     useEffect(() => {
         if ('Notification' in window && Notification.permission === 'default') {
@@ -142,62 +145,50 @@ export function Kitchen() {
         }
     }, []);
 
-    // Reliable notification sound using Audio element (works on all browsers/mobile)
+    // Initialize audio element on mount if previously enabled
+    useEffect(() => {
+        if (isAudioEnabled && !beepAudioRef.current) {
+            const audio = new Audio('/kitchen-beep.wav');
+            audio.volume = 1;
+            audio.load(); // Pre-load the file
+            beepAudioRef.current = audio;
+        }
+    }, []);
+
+    // Play notification sound using the PRE-UNLOCKED Audio element
     const playNotificationSound = () => {
         if (!isAudioEnabled) return;
 
-        try {
-            // 1. Play a beep sound using Audio element (most reliable cross-browser approach)
-            // This is a short WAV beep encoded as base64 data URI
-            const beepAudio = new Audio('data:audio/wav;base64,UklGRl9vT19teleQVZBVkUZbQAAAAAAQACABAAACAAEACAAAAZGF0YQUA');
-
-            // Fallback: use oscillator-based beep via AudioContext
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-            if (AudioContextClass) {
-                const ctx = new AudioContextClass();
-                ctx.resume().then(() => {
-                    // Triple beep for urgency
-                    const playBeep = (startTime: number, freq: number) => {
-                        const osc = ctx.createOscillator();
-                        const gain = ctx.createGain();
-                        osc.connect(gain);
-                        gain.connect(ctx.destination);
-                        osc.frequency.setValueAtTime(freq, startTime);
-                        gain.gain.setValueAtTime(0.6, startTime);
-                        gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.15);
-                        osc.start(startTime);
-                        osc.stop(startTime + 0.15);
-                    };
-
-                    playBeep(ctx.currentTime, 880);
-                    playBeep(ctx.currentTime + 0.2, 988);
-                    playBeep(ctx.currentTime + 0.4, 1100);
-
-                    // Speech synthesis after beeps
-                    setTimeout(() => {
-                        try {
-                            const msg = new SpeechSynthesisUtterance('Novo pedido na cozinha!');
-                            msg.lang = 'pt-BR';
-                            msg.rate = 1.1;
-                            msg.volume = 1;
-                            window.speechSynthesis.speak(msg);
-                        } catch (e) {
-                            // Speech not available, beep was enough
-                        }
-                    }, 700);
-
-                    // Auto-close context after sounds are done
-                    setTimeout(() => ctx.close(), 3000);
-                });
-            }
-
-            // Also try the simple Audio element as backup
-            beepAudio.volume = 1;
-            beepAudio.play().catch(() => { /* silent fail if audio policy blocks it */ });
-
-        } catch (e) {
-            console.error('Erro ao reproduzir áudio:', e);
+        // 1. Play the pre-unlocked WAV file (most reliable on mobile)
+        if (beepAudioRef.current) {
+            beepAudioRef.current.currentTime = 0;
+            beepAudioRef.current.play().catch(() => {
+                // If play fails, try creating a new one (desktop browsers are more lenient)
+                try {
+                    const fallback = new Audio('/kitchen-beep.wav');
+                    fallback.volume = 1;
+                    fallback.play().catch(() => { /* truly blocked */ });
+                } catch (e) { /* ok */ }
+            });
+        } else {
+            // Fallback if ref isn't set
+            try {
+                const audio = new Audio('/kitchen-beep.wav');
+                audio.volume = 1;
+                audio.play().catch(() => { /* blocked */ });
+            } catch (e) { /* ok */ }
         }
+
+        // 2. Speech synthesis (works independently of Audio element)
+        setTimeout(() => {
+            try {
+                const msg = new SpeechSynthesisUtterance('Novo pedido na cozinha!');
+                msg.lang = 'pt-BR';
+                msg.rate = 1.1;
+                msg.volume = 1;
+                window.speechSynthesis.speak(msg);
+            } catch (e) { /* speech not available */ }
+        }, 900);
     };
 
     // Show browser notification (with system sound)
@@ -322,27 +313,23 @@ export function Kitchen() {
                                     Notification.requestPermission();
                                 }
 
-                                // Play a test beep to confirm audio works (also unlocks audio on iOS)
-                                try {
-                                    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-                                    const ctx = new AudioContextClass();
-                                    ctx.resume().then(() => {
-                                        const osc = ctx.createOscillator();
-                                        const gain = ctx.createGain();
-                                        osc.connect(gain);
-                                        gain.connect(ctx.destination);
-                                        osc.frequency.setValueAtTime(880, ctx.currentTime);
-                                        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                                        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-                                        osc.start(ctx.currentTime);
-                                        osc.stop(ctx.currentTime + 0.2);
-                                        setTimeout(() => ctx.close(), 1000);
-                                    });
-                                } catch (e) { /* ok */ }
+                                // CRITICAL: Create and play Audio on USER GESTURE to unlock it
+                                // Mobile browsers only allow Audio.play() from direct user interaction
+                                const audio = new Audio('/kitchen-beep.wav');
+                                audio.volume = 1;
+                                audio.play().then(() => {
+                                    // Audio is now "unlocked" — store in ref for future use
+                                    beepAudioRef.current = audio;
+                                }).catch(() => {
+                                    // Even if play fails, store it — some browsers unlock on next play
+                                    beepAudioRef.current = audio;
+                                });
 
-                                // Unlock SpeechSynthesis
+                                // Unlock SpeechSynthesis too
                                 try {
-                                    const msg = new SpeechSynthesisUtterance('');
+                                    const msg = new SpeechSynthesisUtterance('Sons ativados');
+                                    msg.lang = 'pt-BR';
+                                    msg.volume = 0.5;
                                     window.speechSynthesis.speak(msg);
                                 } catch (e) { /* ok */ }
 
@@ -351,6 +338,7 @@ export function Kitchen() {
                             } else {
                                 setIsAudioEnabled(false);
                                 localStorage.setItem('kds-audio-enabled', 'false');
+                                beepAudioRef.current = null;
                             }
                         }}
                         className={`flex items-center justify-center p-3 rounded-2xl transition-all shadow-sm ${isAudioEnabled
