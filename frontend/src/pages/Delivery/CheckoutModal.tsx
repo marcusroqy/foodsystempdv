@@ -9,7 +9,7 @@ interface CheckoutModalProps {
 }
 
 export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
-    const { tenant, cartTotal, customer, login, logout } = useDelivery();
+    const { tenant, cart, cartTotal, customer, login, logout, clearCart } = useDelivery();
     if (!isOpen) return null;
 
     // View States: 'AUTH_PHONE' | 'AUTH_REGISTER' | 'AUTH_LOGIN' | 'CHECKOUT'
@@ -26,6 +26,10 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
     const [street, setStreet] = useState('');
     const [number, setNumber] = useState('');
     const [neighborhood, setNeighborhood] = useState('');
+    // Checkout State
+    const [orderType, setOrderType] = useState<'DELIVERY' | 'PICKUP'>('DELIVERY');
+    const [paymentMethod, setPaymentMethod] = useState<'PIX' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'CASH'>('PIX');
+    const [changeFor, setChangeFor] = useState('');
 
     // --- Authentication Flow ---
     const checkPhone = () => {
@@ -74,7 +78,45 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
 
     // --- Checkout Flow ---
     const handlePlaceOrder = async () => {
-        alert('Fluxo de finalização será implementado na próxima etapa!');
+        if (!customer) return;
+        if (orderType === 'DELIVERY' && (!customer.street || !customer.number || !customer.neighborhood)) {
+            setError('Por favor, preencha seu endereço de entrega no perfil.');
+            return;
+        }
+
+        setIsLoading(true);
+        setError('');
+
+        try {
+            const items = cart.map(item => ({
+                productId: item.product.id,
+                quantity: item.quantity,
+                notes: item.notes
+            }));
+
+            const payload = {
+                items,
+                orderType,
+                paymentMethod,
+                changeFor: paymentMethod === 'CASH' && changeFor ? Number(changeFor) : null,
+                notes: '',
+                deliveryAddress: orderType === 'DELIVERY' ? `${customer.street}, ${customer.number} - ${customer.neighborhood}` : null
+            };
+
+            const token = localStorage.getItem('@FoodSystem:CustomerToken');
+            await api.post(`/delivery/${tenant.slug}/orders`, payload, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            // Pedido feito com sucesso
+            alert('🎉 Pedido realizado com sucesso!');
+            clearCart();
+            window.location.reload(); // Quick reset for now
+        } catch (err: any) {
+            setError(err.response?.data?.error || 'Erro ao processar pedido.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -205,21 +247,57 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                             <div className="bg-white border rounded-xl p-4 shadow-sm">
                                 <h3 className="font-bold text-gray-900 mb-3">Opção de Entrega</h3>
                                 <div className="flex bg-gray-100 p-1 rounded-lg">
-                                    <button className="flex-1 py-2 font-bold text-sm bg-white shadow-sm rounded-md text-gray-900 border border-gray-200">Delivery</button>
-                                    <button className="flex-1 py-2 font-bold text-sm text-gray-500 hover:text-gray-900">Retirada</button>
+                                    <button onClick={() => setOrderType('DELIVERY')} className={`flex-1 py-2 font-bold text-sm rounded-md transition ${orderType === 'DELIVERY' ? 'bg-white shadow-sm text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Delivery</button>
+                                    <button onClick={() => setOrderType('PICKUP')} className={`flex-1 py-2 font-bold text-sm rounded-md transition ${orderType === 'PICKUP' ? 'bg-white shadow-sm text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>Retirada</button>
                                 </div>
 
-                                <div className="mt-4 bg-gray-50 p-3 rounded-lg border border-gray-100 flex items-start gap-3">
-                                    <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
-                                    <div>
-                                        <p className="font-medium text-gray-900 text-sm">{customer.street}, {customer.number}</p>
-                                        <p className="text-xs text-gray-500">{customer.neighborhood}</p>
-                                        <button className="text-xs font-bold text-primary-600 mt-1 hover:underline">Editar Endereço</button>
+                                {orderType === 'DELIVERY' && (
+                                    <div className="mt-4 bg-gray-50 p-3 rounded-lg border border-gray-100 flex items-start gap-3">
+                                        <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
+                                        <div>
+                                            <p className="font-medium text-gray-900 text-sm">{customer.street}, {customer.number}</p>
+                                            <p className="text-xs text-gray-500">{customer.neighborhood}</p>
+                                            <button className="text-xs font-bold text-primary-600 mt-1 hover:underline">Editar Endereço (em breve)</button>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
 
-                            <button onClick={handlePlaceOrder} className="w-full bg-[#1EA64B] text-white py-4 rounded-xl font-bold text-lg hover:bg-green-600 transition shadow-lg shadow-green-500/30 flex justify-between px-6 items-center">
+                            {/* Pagamento */}
+                            <div className="bg-white border rounded-xl p-4 shadow-sm">
+                                <h3 className="font-bold text-gray-900 mb-3">Forma de Pagamento</h3>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { id: 'PIX', label: 'Pix' },
+                                        { id: 'CREDIT_CARD', label: 'Cartão de Crédito' },
+                                        { id: 'DEBIT_CARD', label: 'Cartão de Débito' },
+                                        { id: 'CASH', label: 'Dinheiro' }
+                                    ].map(method => (
+                                        <button
+                                            key={method.id}
+                                            onClick={() => setPaymentMethod(method.id as any)}
+                                            className={`p-3 border rounded-xl font-bold text-sm transition-all ${paymentMethod === method.id ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                                        >
+                                            {method.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {paymentMethod === 'CASH' && (
+                                    <div className="mt-4 animate-in fade-in">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Troco para quanto?</label>
+                                        <input
+                                            type="number"
+                                            value={changeFor}
+                                            onChange={(e) => setChangeFor(e.target.value)}
+                                            placeholder="Ex: 50 pra troco..."
+                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <button disabled={isLoading} onClick={handlePlaceOrder} className="w-full bg-[#1EA64B] text-white py-4 rounded-xl font-bold text-lg hover:bg-green-600 transition shadow-lg shadow-green-500/30 flex justify-between px-6 items-center disabled:opacity-50">
                                 <span>Concluir Pedido</span>
                                 <span>R$ {cartTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                             </button>
