@@ -18,21 +18,24 @@ export class InventoryController {
                 const totalOut = p.inventory.filter((tx: any) => tx.type === 'OUT').reduce((acc: number, tx: any) => acc + Number(tx.quantity), 0);
                 const currentQuantity = totalIn - totalOut;
 
-                let limit = 10; // minimum mock
+                const minQty = Number(p.minStock) || 0;
                 let status = 'GOOD';
                 if (currentQuantity <= 0) status = 'OUT';
-                else if (currentQuantity <= limit) status = 'LOW';
+                else if (minQty > 0 && currentQuantity <= minQty) status = 'LOW';
 
                 return {
                     id: p.id,
                     name: p.name,
                     sku: p.id.substring(0, 8).toUpperCase(),
                     quantity: currentQuantity,
-                    minQuantity: limit,
-                    unit: 'un',
+                    minQuantity: minQty,
+                    unit: p.unit || 'UN',
+                    costPrice: Number(p.costPrice) || 0,
+                    supplier: p.supplier || '',
                     lastUpdated: p.updatedAt,
                     status: status,
-                    categoryName: p.category?.name || 'Sem Categoria'
+                    categoryName: p.category?.name || 'Sem Categoria',
+                    imageUrl: p.imageUrl || null
                 };
             });
 

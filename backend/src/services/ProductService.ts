@@ -15,7 +15,7 @@ export class ProductService {
         });
     }
 
-    async createProduct(tenantId: string, data: { name: string; price: number; categoryId?: string; isStockControlled?: boolean; isForSale?: boolean; imageUrl?: string }) {
+    async createProduct(tenantId: string, data: { name: string; price: number; categoryId?: string; isStockControlled?: boolean; isForSale?: boolean; imageUrl?: string; unit?: string; minStock?: number; costPrice?: number; supplier?: string }) {
         const prisma = getTenantPrisma(tenantId);
         const newProduct = await prisma.product.create({
             data: {
@@ -25,7 +25,11 @@ export class ProductService {
                 categoryId: data.categoryId,
                 isStockControlled: data.isStockControlled ?? true,
                 isForSale: data.isForSale ?? true,
-                imageUrl: data.imageUrl || null
+                imageUrl: data.imageUrl || null,
+                unit: data.unit || 'UN',
+                minStock: data.minStock ?? 0,
+                costPrice: data.costPrice ?? 0,
+                supplier: data.supplier || null
             }
         });
 
@@ -51,7 +55,7 @@ export class ProductService {
         return newProduct;
     }
 
-    async updateProduct(tenantId: string, id: string, data: { name?: string; price?: number; categoryId?: string; isStockControlled?: boolean; isForSale?: boolean; imageUrl?: string }) {
+    async updateProduct(tenantId: string, id: string, data: { name?: string; price?: number; categoryId?: string; isStockControlled?: boolean; isForSale?: boolean; imageUrl?: string; unit?: string; minStock?: number; costPrice?: number; supplier?: string }) {
         const prisma = getTenantPrisma(tenantId);
         return prisma.product.updateMany({
             where: { id, tenantId },
@@ -61,7 +65,11 @@ export class ProductService {
                 ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
                 ...(data.isStockControlled !== undefined && { isStockControlled: data.isStockControlled }),
                 ...(data.isForSale !== undefined && { isForSale: data.isForSale }),
-                ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl })
+                ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
+                ...(data.unit !== undefined && { unit: data.unit }),
+                ...(data.minStock !== undefined && { minStock: data.minStock }),
+                ...(data.costPrice !== undefined && { costPrice: data.costPrice }),
+                ...(data.supplier !== undefined && { supplier: data.supplier })
             }
         });
     }

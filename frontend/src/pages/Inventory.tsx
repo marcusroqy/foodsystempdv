@@ -9,12 +9,58 @@ interface StockItem {
     name: string;
     sku: string;
     quantity: number;
+    minQuantity: number;
     unit: string;
+    costPrice: number;
+    supplier: string;
     lastUpdated: string;
     status: 'GOOD' | 'LOW' | 'OUT';
     categoryName: string;
     categoryId?: string;
     imageUrl?: string;
+}
+
+// ==========================================
+// CATEGORIAS INTELIGENTES - Auto-sugestão
+// ==========================================
+const SMART_CATEGORY_RULES: { keywords: string[]; category: string; unit: string }[] = [
+    { keywords: ['carne', 'frango', 'peixe', 'linguiça', 'bacon', 'calabresa', 'presunto', 'peito'], category: 'Proteínas / Carnes', unit: 'KG' },
+    { keywords: ['queijo', 'mussarela', 'requeijão', 'cream cheese', 'cheddar', 'parmesão'], category: 'Laticínios', unit: 'KG' },
+    { keywords: ['leite', 'água', 'suco', 'refrigerante', 'cerveja', 'vinho', 'azeite'], category: 'Bebidas / Líquidos', unit: 'LT' },
+    { keywords: ['óleo', 'gordura', 'banha', 'manteiga'], category: 'Óleos e Gorduras', unit: 'LT' },
+    { keywords: ['farinha', 'trigo', 'amido', 'polvilho', 'fubá', 'aveia'], category: 'Farináceos', unit: 'KG' },
+    { keywords: ['tomate', 'cebola', 'alho', 'pimentão', 'cenoura', 'batata', 'milho', 'azeitona', 'palmito'], category: 'Vegetais / Temperos', unit: 'KG' },
+    { keywords: ['sal', 'açúcar', 'tempero', 'pimenta', 'orégano', 'vinagre', 'molho', 'catchup', 'ketchup', 'maionese', 'mostarda'], category: 'Condimentos / Molhos', unit: 'UN' },
+    { keywords: ['sacola', 'saco', 'embalagem', 'copo', 'guardanapo', 'canudo', 'tampa', 'prato', 'bandeja', 'papel'], category: 'Embalagens / Descartáveis', unit: 'UN' },
+    { keywords: ['gás', 'carvão', 'álcool', 'detergente', 'esponja', 'sabão', 'pano', 'luva'], category: 'Limpeza / Operacional', unit: 'UN' },
+    { keywords: ['ovo'], category: 'Proteínas / Carnes', unit: 'UN' },
+];
+
+const UNIT_OPTIONS = [
+    { value: 'UN', label: 'Unidade (UN)', desc: 'Itens contáveis' },
+    { value: 'KG', label: 'Quilograma (KG)', desc: 'Carnes, queijos, farinhas' },
+    { value: 'G', label: 'Grama (G)', desc: 'Temperos, pequenas porções' },
+    { value: 'LT', label: 'Litro (LT)', desc: 'Líquidos, óleos' },
+    { value: 'ML', label: 'Mililitro (ML)', desc: 'Molhos, essências' },
+    { value: 'PCT', label: 'Pacote (PCT)', desc: 'Itens embalados' },
+    { value: 'CX', label: 'Caixa (CX)', desc: 'Compras em caixa' },
+    { value: 'SC', label: 'Saco (SC)', desc: 'Farinhas, grãos' },
+];
+
+function suggestCategoryAndUnit(name: string, categories: { id: string; name: string }[]): { categoryId: string; unit: string } | null {
+    const lowerName = name.toLowerCase();
+    for (const rule of SMART_CATEGORY_RULES) {
+        if (rule.keywords.some(kw => lowerName.includes(kw))) {
+            // Try to match existing category by similar name
+            const match = categories.find(c => c.name.toLowerCase().includes(rule.category.toLowerCase().split('/')[0].trim().substring(0, 5)));
+            if (match) {
+                return { categoryId: match.id, unit: rule.unit };
+            }
+            // Return just the unit suggestion
+            return { categoryId: '', unit: rule.unit };
+        }
+    }
+    return null;
 }
 
 export function Inventory() {
@@ -27,11 +73,12 @@ export function Inventory() {
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editForm, setEditForm] = useState({ name: '', categoryId: '', imageUrl: '' });
+    const [editForm, setEditForm] = useState({ name: '', categoryId: '', imageUrl: '', unit: 'UN', minStock: '', costPrice: '', supplier: '' });
 
     // Create Modal State
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [createForm, setCreateForm] = useState({ name: '', categoryId: '', imageUrl: '' });
+    const [createForm, setCreateForm] = useState({ name: '', categoryId: '', imageUrl: '', unit: 'UN', minStock: '', costPrice: '', supplier: '' });
+    const [smartSuggestion, setSmartSuggestion] = useState<string | null>(null);
 
     // ==========================================
     // BUSCA DE DADOS COM REACT QUERY CACHE
@@ -109,7 +156,15 @@ export function Inventory() {
 
     const openEditModal = (item: StockItem) => {
         setSelectedItem(item);
-        setEditForm({ name: item.name, categoryId: item.categoryId || '', imageUrl: item.imageUrl || '' });
+        setEditForm({
+            name: item.name,
+            categoryId: item.categoryId || '',
+            imageUrl: item.imageUrl || '',
+            unit: item.unit || 'UN',
+            minStock: item.minQuantity ? String(item.minQuantity) : '',
+            costPrice: item.costPrice ? String(item.costPrice) : '',
+            supplier: item.supplier || ''
+        });
         setIsEditModalOpen(true);
     };
 
@@ -128,7 +183,11 @@ export function Inventory() {
         editMutation.mutate({
             name: editForm.name,
             categoryId: editForm.categoryId || null,
-            imageUrl: editForm.imageUrl || null
+            imageUrl: editForm.imageUrl || null,
+            unit: editForm.unit,
+            minStock: editForm.minStock ? parseFloat(editForm.minStock.replace(',', '.')) : 0,
+            costPrice: editForm.costPrice ? parseFloat(editForm.costPrice.replace(',', '.')) : 0,
+            supplier: editForm.supplier || null
         });
     };
 
@@ -150,7 +209,11 @@ export function Inventory() {
             categoryId: createForm.categoryId,
             imageUrl: createForm.imageUrl || null,
             isForSale: false,
-            isStockControlled: true
+            isStockControlled: true,
+            unit: createForm.unit,
+            minStock: createForm.minStock ? parseFloat(createForm.minStock.replace(',', '.')) : 0,
+            costPrice: createForm.costPrice ? parseFloat(createForm.costPrice.replace(',', '.')) : 0,
+            supplier: createForm.supplier || null
         });
     };
 
@@ -282,7 +345,7 @@ export function Inventory() {
                     </h2>
 
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
-                        <button onClick={() => { setCreateForm({ name: '', categoryId: '', imageUrl: '' }); setIsCreateModalOpen(true); }} className="bg-gray-900 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-800 font-medium transition-colors text-sm whitespace-nowrap shadow-sm">
+                        <button onClick={() => { setCreateForm({ name: '', categoryId: '', imageUrl: '', unit: 'UN', minStock: '', costPrice: '', supplier: '' }); setSmartSuggestion(null); setIsCreateModalOpen(true); }} className="bg-gray-900 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-800 font-medium transition-colors text-sm whitespace-nowrap shadow-sm">
                             <Plus className="w-4 h-4" /> Novo Item
                         </button>
                         <div className="relative w-full sm:w-64">
@@ -481,15 +544,32 @@ export function Inventory() {
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
-                        <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+                        <form onSubmit={handleSaveEdit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Item</label>
                                 <input type="text" required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" />
                             </div>
+
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem (Opcional)</label>
-                                <input type="url" value={editForm.imageUrl} onChange={e => setEditForm({ ...editForm, imageUrl: e.target.value })} placeholder="https://imgur.com/foto.jpg" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" />
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Unidade de Medida</label>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {UNIT_OPTIONS.map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setEditForm({ ...editForm, unit: opt.value })}
+                                            className={`p-2 rounded-lg border text-center transition-all ${editForm.unit === opt.value
+                                                ? 'border-primary-500 bg-primary-50 text-primary-700 shadow-sm font-bold'
+                                                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            <div className="text-sm font-bold">{opt.value}</div>
+                                            <div className="text-[10px] text-gray-500 leading-tight mt-0.5">{opt.desc}</div>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
                                 <div className="flex gap-2">
@@ -508,6 +588,29 @@ export function Inventory() {
                                     </button>
                                 </div>
                             </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Estoque Mínimo</label>
+                                    <input type="text" value={editForm.minStock} onChange={e => setEditForm({ ...editForm, minStock: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder={`Ex: 5 ${editForm.unit.toLowerCase()}`} />
+                                    <p className="text-[10px] text-gray-400 mt-0.5">Alerta quando ficar abaixo</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Custo Unitário (R$)</label>
+                                    <input type="text" value={editForm.costPrice} onChange={e => setEditForm({ ...editForm, costPrice: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: 12,50" />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor (Opcional)</label>
+                                <input type="text" value={editForm.supplier} onChange={e => setEditForm({ ...editForm, supplier: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: Distribuidora ABC" />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem (Opcional)</label>
+                                <input type="url" value={editForm.imageUrl} onChange={e => setEditForm({ ...editForm, imageUrl: e.target.value })} placeholder="https://imgur.com/foto.jpg" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" />
+                            </div>
+
                             <div className="pt-4 flex gap-3">
                                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
                                 <button type="submit" className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors shadow-md shadow-primary-500/20 text-center">Salvar Alterações</button>
@@ -529,16 +632,55 @@ export function Inventory() {
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
-                        <form onSubmit={handleCreateItem} className="p-6 space-y-4">
+                        <form onSubmit={handleCreateItem} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Item</label>
-                                <input type="text" required value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: Queijo Mussarela" />
+                                <input type="text" required value={createForm.name} onChange={e => {
+                                    const newName = e.target.value;
+                                    setCreateForm(prev => ({ ...prev, name: newName }));
+                                    // Smart category + unit auto-detection
+                                    const suggestion = suggestCategoryAndUnit(newName, dbCategories);
+                                    if (suggestion && newName.length >= 3) {
+                                        setSmartSuggestion(SMART_CATEGORY_RULES.find(r => r.keywords.some(kw => newName.toLowerCase().includes(kw)))?.category || null);
+                                        setCreateForm(prev => ({
+                                            ...prev,
+                                            name: newName,
+                                            unit: suggestion.unit,
+                                            ...(suggestion.categoryId ? { categoryId: suggestion.categoryId } : {})
+                                        }));
+                                    } else {
+                                        setSmartSuggestion(null);
+                                    }
+                                }} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: Queijo Mussarela" />
                                 <p className="text-xs text-gray-500 mt-1">Este item será criado como insumo (não será vendido no PDV).</p>
+                                {smartSuggestion && (
+                                    <div className="mt-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700 flex items-center gap-2">
+                                        <span className="text-blue-500">💡</span>
+                                        <span>Sugestão inteligente: <strong>{smartSuggestion}</strong> — Unidade auto-definida para <strong>{createForm.unit}</strong></span>
+                                    </div>
+                                )}
                             </div>
+
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem (Opcional)</label>
-                                <input type="url" value={createForm.imageUrl} onChange={e => setCreateForm({ ...createForm, imageUrl: e.target.value })} placeholder="https://imgur.com/foto.jpg" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" />
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Unidade de Medida</label>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {UNIT_OPTIONS.map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setCreateForm({ ...createForm, unit: opt.value })}
+                                            className={`p-2 rounded-lg border text-center transition-all ${createForm.unit === opt.value
+                                                ? 'border-primary-500 bg-primary-50 text-primary-700 shadow-sm font-bold'
+                                                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            <div className="text-sm font-bold">{opt.value}</div>
+                                            <div className="text-[10px] text-gray-500 leading-tight mt-0.5">{opt.desc}</div>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
                                 <div className="flex gap-2">
@@ -557,6 +699,29 @@ export function Inventory() {
                                     </button>
                                 </div>
                             </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Estoque Mínimo</label>
+                                    <input type="text" value={createForm.minStock} onChange={e => setCreateForm({ ...createForm, minStock: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder={`Ex: 5 ${createForm.unit.toLowerCase()}`} />
+                                    <p className="text-[10px] text-gray-400 mt-0.5">Alerta quando ficar abaixo</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Custo Unitário (R$)</label>
+                                    <input type="text" value={createForm.costPrice} onChange={e => setCreateForm({ ...createForm, costPrice: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: 12,50" />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor (Opcional)</label>
+                                <input type="text" value={createForm.supplier} onChange={e => setCreateForm({ ...createForm, supplier: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: Distribuidora ABC" />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem (Opcional)</label>
+                                <input type="url" value={createForm.imageUrl} onChange={e => setCreateForm({ ...createForm, imageUrl: e.target.value })} placeholder="https://imgur.com/foto.jpg" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" />
+                            </div>
+
                             <div className="pt-4 flex gap-3">
                                 <button type="button" onClick={() => setIsCreateModalOpen(false)} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
                                 <button type="submit" className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors shadow-md shadow-primary-500/20 text-center">Cadastrar Item</button>
