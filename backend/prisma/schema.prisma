@@ -225,6 +225,7 @@ model FinancialTransaction {
   category     String   // Ex: "Venda PDV", "Pagto Fornecedor", "Luz"
   amount       Decimal  @db.Decimal(10, 2)
   description  String?  // Opcional 
+  paymentMethod String? // Forma de pagamento (Dinheiro, PIX, Cartão, etc.)
   paidAt       DateTime // Data em que o dinheiro efetivamente entrou/saiu
   createdAt    DateTime @default(now())
 

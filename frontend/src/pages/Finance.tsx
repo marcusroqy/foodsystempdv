@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Wallet, History, FileText, Plus, X } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Wallet, History, FileText, Plus, X, CreditCard, Banknote, Smartphone, BarChart3 } from 'lucide-react';
 import { api } from '../contexts/AuthContext';
 import { formatCurrency, parseCurrency } from '../utils/format';
 
@@ -11,6 +11,7 @@ interface Transaction {
     type: 'INCOME' | 'EXPENSE';
     date: string;
     category: string;
+    paymentMethod: string | null;
 }
 
 export function Finance() {
@@ -24,12 +25,37 @@ export function Finance() {
             const res = await api.get('/finances');
             return res.data as Transaction[];
         },
-        staleTime: 1000 * 60 * 5, // 5 minutes cache
+        staleTime: 1000 * 60 * 5,
     });
 
     const totalIncome = transactions.filter(t => t.type === 'INCOME').reduce((acc, curr) => acc + curr.amount, 0);
     const totalExpense = transactions.filter(t => t.type === 'EXPENSE').reduce((acc, curr) => acc + curr.amount, 0);
     const balance = totalIncome - totalExpense;
+
+    // Payment method analytics (only INCOME/sales)
+    const salesByPayment = transactions
+        .filter(t => t.type === 'INCOME' && t.paymentMethod)
+        .reduce((acc, t) => {
+            const method = t.paymentMethod!;
+            acc[method] = (acc[method] || 0) + t.amount;
+            return acc;
+        }, {} as Record<string, number>);
+
+    const totalSalesWithPayment = Object.values(salesByPayment).reduce((a, b) => a + b, 0);
+    const paymentMethodEntries = Object.entries(salesByPayment).sort((a, b) => b[1] - a[1]);
+
+    const getPaymentIcon = (method: string) => {
+        if (method.includes('PIX')) return <Smartphone className="w-4 h-4" />;
+        if (method.includes('Cartão') || method.includes('Débito') || method.includes('Crédito')) return <CreditCard className="w-4 h-4" />;
+        return <Banknote className="w-4 h-4" />;
+    };
+
+    const getPaymentColor = (method: string) => {
+        if (method.includes('PIX')) return { bg: 'bg-purple-50', text: 'text-purple-700', bar: 'bg-purple-500' };
+        if (method.includes('Débito')) return { bg: 'bg-blue-50', text: 'text-blue-700', bar: 'bg-blue-500' };
+        if (method.includes('Crédito')) return { bg: 'bg-orange-50', text: 'text-orange-700', bar: 'bg-orange-500' };
+        return { bg: 'bg-green-50', text: 'text-green-700', bar: 'bg-green-500' };
+    };
 
     const createTransactionMutation = useMutation({
         mutationFn: async (newTransaction: any) => {
@@ -41,7 +67,7 @@ export function Finance() {
             setFormData({ description: '', amount: '', type: 'INCOME', category: 'Vendas' });
         },
         onError: () => {
-            alert('Erro ao salvar transação. O backend de finanças ainda está sendo implementado conectando o React...');
+            alert('Erro ao salvar transação.');
             setIsModalOpen(false);
         }
     });
@@ -55,6 +81,12 @@ export function Finance() {
             category: formData.category
         });
     };
+
+    // Count orders today
+    const today = new Date().toDateString();
+    const todaySales = transactions.filter(t => t.type === 'INCOME' && t.category === 'Venda PDV' && new Date(t.date).toDateString() === today);
+    const todayTotal = todaySales.reduce((acc, t) => acc + t.amount, 0);
+    const todayCount = todaySales.length;
 
     return (
         <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
@@ -77,7 +109,7 @@ export function Finance() {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 {/* Saldo Total */}
                 <div className="bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-2xl shadow-xl shadow-gray-900/20 text-white relative overflow-hidden">
                     <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
@@ -88,11 +120,11 @@ export function Finance() {
                             <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
                                 <DollarSign className="w-6 h-6 text-white" />
                             </div>
-                            <span className="text-xs font-bold bg-white/20 px-2 py-1 rounded-md backdrop-blur-sm">Mês Atual</span>
+                            <span className="text-xs font-bold bg-white/20 px-2 py-1 rounded-md backdrop-blur-sm">Total</span>
                         </div>
                         <div>
                             <p className="text-sm font-medium text-gray-300 mb-1">Saldo em Caixa</p>
-                            <h3 className="text-4xl font-bold tracking-tight">R$ {balance.toFixed(2)}</h3>
+                            <h3 className="text-3xl font-bold tracking-tight">R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                         </div>
                     </div>
                 </div>
@@ -104,12 +136,12 @@ export function Finance() {
                             <TrendingUp className="w-6 h-6" />
                         </div>
                         <span className="flex items-center gap-1 text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-md">
-                            <ArrowUpRight className="w-3 h-3" /> 8.5%
+                            <ArrowUpRight className="w-3 h-3" /> {todayCount} vendas hj
                         </span>
                     </div>
                     <div>
                         <p className="text-sm font-medium text-gray-500 mb-1">Entradas (Receitas)</p>
-                        <h3 className="text-3xl font-bold text-gray-900">R$ {totalIncome.toFixed(2)}</h3>
+                        <h3 className="text-3xl font-bold text-gray-900">R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                     </div>
                 </div>
 
@@ -119,16 +151,87 @@ export function Finance() {
                         <div className="p-3 bg-red-50 text-red-600 rounded-xl">
                             <TrendingDown className="w-6 h-6" />
                         </div>
-                        <span className="flex items-center gap-1 text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-md">
-                            <ArrowUpRight className="w-3 h-3" /> 2.1%
-                        </span>
                     </div>
                     <div>
                         <p className="text-sm font-medium text-gray-500 mb-1">Saídas (Despesas)</p>
-                        <h3 className="text-3xl font-bold text-gray-900">R$ {totalExpense.toFixed(2)}</h3>
+                        <h3 className="text-3xl font-bold text-gray-900">R$ {totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                    </div>
+                </div>
+
+                {/* Vendas Hoje */}
+                <div className="bg-gradient-to-br from-primary-500 to-primary-600 p-6 rounded-2xl shadow-xl shadow-primary-500/20 text-white relative overflow-hidden">
+                    <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
+                        <BarChart3 className="w-32 h-32" />
+                    </div>
+                    <div className="relative z-10 flex flex-col h-full justify-between">
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
+                                <TrendingUp className="w-6 h-6 text-white" />
+                            </div>
+                            <span className="text-xs font-bold bg-white/20 px-2 py-1 rounded-md backdrop-blur-sm">Hoje</span>
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-white/70 mb-1">Faturamento Hoje</p>
+                            <h3 className="text-3xl font-bold tracking-tight">R$ {todayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* Payment Method Analytics */}
+            {paymentMethodEntries.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
+                    <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-5">
+                        <BarChart3 className="w-5 h-5 text-primary-500" /> Vendas por Forma de Pagamento
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Bars */}
+                        <div className="space-y-3">
+                            {paymentMethodEntries.map(([method, amount]) => {
+                                const pct = totalSalesWithPayment > 0 ? (amount / totalSalesWithPayment) * 100 : 0;
+                                const colors = getPaymentColor(method);
+                                return (
+                                    <div key={method} className="group">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`p-1.5 rounded-lg ${colors.bg} ${colors.text}`}>
+                                                    {getPaymentIcon(method)}
+                                                </div>
+                                                <span className="text-sm font-medium text-gray-700">{method}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-sm font-bold text-gray-900">R$ {amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                <span className="text-xs text-gray-400 ml-2">{pct.toFixed(0)}%</span>
+                                            </div>
+                                        </div>
+                                        <div className="w-full bg-gray-100 rounded-full h-2.5">
+                                            <div className={`h-2.5 rounded-full ${colors.bar} transition-all duration-500`} style={{ width: `${pct}%` }} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Summary cards */}
+                        <div className="grid grid-cols-2 gap-3">
+                            {paymentMethodEntries.map(([method, amount]) => {
+                                const colors = getPaymentColor(method);
+                                const count = transactions.filter(t => t.paymentMethod === method && t.type === 'INCOME').length;
+                                return (
+                                    <div key={method} className={`p-4 rounded-xl border border-gray-100 ${colors.bg}`}>
+                                        <div className={`flex items-center gap-2 ${colors.text} mb-2`}>
+                                            {getPaymentIcon(method)}
+                                            <span className="text-xs font-bold uppercase tracking-wide">{method}</span>
+                                        </div>
+                                        <div className="text-xl font-black text-gray-900">R$ {amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                        <div className="text-xs text-gray-500 mt-1">{count} {count === 1 ? 'venda' : 'vendas'}</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Listagem de Transações */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -144,6 +247,7 @@ export function Finance() {
                         <thead className="text-xs uppercase bg-white text-gray-500 border-b border-gray-100">
                             <tr>
                                 <th className="px-6 py-4 font-semibold tracking-wider">Descrição / Categoria</th>
+                                <th className="px-6 py-4 font-semibold tracking-wider">Pagamento</th>
                                 <th className="px-6 py-4 font-semibold tracking-wider">Data</th>
                                 <th className="px-6 py-4 font-semibold tracking-wider text-right">Valor</th>
                             </tr>
@@ -162,11 +266,21 @@ export function Finance() {
                                             </div>
                                         </div>
                                     </td>
+                                    <td className="px-6 py-4">
+                                        {transaction.paymentMethod ? (
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${getPaymentColor(transaction.paymentMethod).bg} ${getPaymentColor(transaction.paymentMethod).text}`}>
+                                                {getPaymentIcon(transaction.paymentMethod)}
+                                                {transaction.paymentMethod}
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-gray-400">—</span>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 text-gray-500">
                                         {new Date(transaction.date).toLocaleDateString('pt-BR')} <span className="text-xs opacity-70 ml-1">{new Date(transaction.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                                     </td>
                                     <td className={`px-6 py-4 text-right font-bold ${transaction.type === 'INCOME' ? 'text-green-600' : 'text-gray-900'}`}>
-                                        {transaction.type === 'INCOME' ? '+' : '-'} R$ {transaction.amount.toFixed(2)}
+                                        {transaction.type === 'INCOME' ? '+' : '-'} R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </td>
                                 </tr>
                             ))}
@@ -176,22 +290,30 @@ export function Finance() {
                     {/* Mobile Cards */}
                     <div className="md:hidden flex flex-col divide-y divide-gray-100">
                         {transactions.map(transaction => (
-                            <div key={transaction.id} className="p-4 flex justify-between items-center gap-3">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className={`p-3 rounded-xl flex-shrink-0 ${transaction.type === 'INCOME' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                                        {transaction.type === 'INCOME' ? <ArrowDownRight className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="font-bold text-gray-900 truncate">{transaction.description}</div>
-                                        <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
-                                            <span className="bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-semibold">{transaction.category}</span>
-                                            <span>{new Date(transaction.date).toLocaleDateString('pt-BR')}</span>
+                            <div key={transaction.id} className="p-4 flex flex-col gap-2">
+                                <div className="flex justify-between items-start gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className={`p-3 rounded-xl flex-shrink-0 ${transaction.type === 'INCOME' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                            {transaction.type === 'INCOME' ? <ArrowDownRight className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="font-bold text-gray-900 truncate">{transaction.description}</div>
+                                            <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5 flex-wrap">
+                                                <span className="bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-semibold">{transaction.category}</span>
+                                                {transaction.paymentMethod && (
+                                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${getPaymentColor(transaction.paymentMethod).bg} ${getPaymentColor(transaction.paymentMethod).text}`}>
+                                                        {getPaymentIcon(transaction.paymentMethod)}
+                                                        {transaction.paymentMethod}
+                                                    </span>
+                                                )}
+                                                <span>{new Date(transaction.date).toLocaleDateString('pt-BR')}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className={`text-right font-bold whitespace-nowrap ${transaction.type === 'INCOME' ? 'text-green-600' : 'text-gray-900'}`}>
-                                    {transaction.type === 'INCOME' ? '+' : '-'} <br className="sm:hidden" />
-                                    R$ {transaction.amount.toFixed(2)}
+                                    <div className={`text-right font-bold whitespace-nowrap ${transaction.type === 'INCOME' ? 'text-green-600' : 'text-gray-900'}`}>
+                                        {transaction.type === 'INCOME' ? '+' : '-'} <br className="sm:hidden" />
+                                        R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
                                 </div>
                             </div>
                         ))}

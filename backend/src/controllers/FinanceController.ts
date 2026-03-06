@@ -19,7 +19,8 @@ export class FinanceController {
                 amount: Number(f.amount),
                 type: f.type,
                 date: f.paidAt,
-                category: f.category
+                category: f.category,
+                paymentMethod: f.paymentMethod || null
             }));
 
             return res.json(mapped);

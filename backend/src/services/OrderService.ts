@@ -130,6 +130,26 @@ export class OrderService {
             console.error('Failed to notify kitchen:', error);
         }
 
+        // ==========================================
+        // AUTO-CREATE FINANCIAL TRANSACTION (INCOME)
+        // ==========================================
+        try {
+            await prisma.financialTransaction.create({
+                data: {
+                    tenantId,
+                    orderId: order.id,
+                    type: 'INCOME',
+                    category: 'Venda PDV',
+                    amount: totalAmount,
+                    description: `Pedido #${order.id.slice(-4).toUpperCase()} - ${data.customerName || 'Balcão'}`,
+                    paymentMethod: data.paymentMethod || null,
+                    paidAt: new Date()
+                }
+            });
+        } catch (error) {
+            console.error('Failed to create financial transaction for order:', error);
+        }
+
         return order;
     }
 

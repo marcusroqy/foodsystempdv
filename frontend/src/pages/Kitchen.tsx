@@ -155,15 +155,15 @@ export function Kitchen() {
         }
     }, []);
 
-    // Play notification sound using the PRE-UNLOCKED Audio element
-    const playNotificationSound = () => {
+    const playNotificationSound = (newOrdersCount: number, latestOrder?: Order) => {
+        // 1. Audio element beep
         if (!isAudioEnabled) return;
 
-        // 1. Play the pre-unlocked WAV file (most reliable on mobile)
+        // Try playing the unlocked ref
         if (beepAudioRef.current) {
             beepAudioRef.current.currentTime = 0;
             beepAudioRef.current.play().catch(() => {
-                // If play fails, try creating a new one (desktop browsers are more lenient)
+                // If it fails (maybe the user reloaded and gesture got lost), try creating a fresh one
                 try {
                     const fallback = new Audio('/kitchen-beep.wav');
                     fallback.volume = 1;
@@ -182,9 +182,16 @@ export function Kitchen() {
         // 2. Speech synthesis (works independently of Audio element)
         setTimeout(() => {
             try {
-                const msg = new SpeechSynthesisUtterance('Novo pedido na cozinha!');
+                let textToSay = 'Novo pedido na cozinha!';
+                if (latestOrder) {
+                    const itemsStr = latestOrder.items.map(i => `${i.quantity} ${i.product?.name || 'item'}`).join(', ');
+                    const customer = latestOrder.customerName ? `Para ${latestOrder.customerName}. ` : '';
+                    textToSay = `Novo pedido de número ${latestOrder.id.slice(-3)}. ${customer} Itens: ${itemsStr}.`;
+                }
+
+                const msg = new SpeechSynthesisUtterance(textToSay);
                 msg.lang = 'pt-BR';
-                msg.rate = 1.1;
+                msg.rate = 1.0; // Slower, more natural rate
                 msg.volume = 1;
                 window.speechSynthesis.speak(msg);
             } catch (e) { /* speech not available */ }
@@ -240,8 +247,9 @@ export function Kitchen() {
             } else if (knownOrderIds.current.size > 0 || activeOrders.length > 0) {
                 const newOrders = activeOrders.filter((o: Order) => !knownOrderIds.current.has(o.id));
                 if (newOrders.length > 0) {
+                    const latestOrder = newOrders[newOrders.length - 1]; // Get the most recent one for dictation
                     // Play sound + show browser notification
-                    playNotificationSound();
+                    playNotificationSound(newOrders.length, latestOrder);
                     showBrowserNotification(newOrders.length);
                 }
             }

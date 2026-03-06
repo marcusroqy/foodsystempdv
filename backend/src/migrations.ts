@@ -15,6 +15,8 @@ export async function runMigrations() {
         // Order table migrations
         await prisma.$executeRawUnsafe(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS "paymentMethod" VARCHAR(50)`);
         await prisma.$executeRawUnsafe(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS notes TEXT`);
+        // Financial transactions migrations
+        await prisma.$executeRawUnsafe(`ALTER TABLE financial_transactions ADD COLUMN IF NOT EXISTS "paymentMethod" VARCHAR(50)`);
         console.log('✅ Database migrations applied successfully');
     } catch (error) {
         console.error('❌ Migration error (non-fatal):', error);
