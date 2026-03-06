@@ -173,6 +173,8 @@ model Order {
   customerName String?  // Nome na comanda (opcional)
   status       OrderStatus @default(QUEUE)
   totalAmount  Decimal  @db.Decimal(10, 2)
+  paymentMethod String? // PIX, Dinheiro, Cartão Débito, Cartão Crédito
+  notes        String?  // Observação geral do pedido
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

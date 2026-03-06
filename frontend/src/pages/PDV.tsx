@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth, api } from '../contexts/AuthContext';
-import { ShoppingCart, LogOut, Plus, Minus, Trash2, Edit2, X, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, LogOut, Plus, Minus, Trash2, Edit2, X, AlertCircle, Loader2, CheckCircle2, CreditCard, Banknote, Smartphone, MessageSquare } from 'lucide-react';
 import { formatCurrency, parseCurrency } from '../utils/format';
 
 interface Product {
@@ -21,6 +21,7 @@ interface Category {
 
 interface CartItem extends Product {
     quantity: number;
+    notes?: string;
 }
 
 export function PDV() {
@@ -87,7 +88,7 @@ export function PDV() {
             if (existing) {
                 return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
             }
-            return [...prev, { ...product, quantity: 1 }];
+            return [...prev, { ...product, quantity: 1, notes: '' }];
         });
     };
 
@@ -105,6 +106,10 @@ export function PDV() {
         setCart(prev => prev.filter(item => item.id !== id));
     };
 
+    const updateItemNotes = (id: string, notes: string) => {
+        setCart(prev => prev.map(item => item.id === id ? { ...item, notes } : item));
+    };
+
     // ==========================================
     // FUNÇÕES DE CRUD (MOCKADAS)
     // ==========================================
@@ -117,12 +122,12 @@ export function PDV() {
                 price: formatCurrency(product.price.toFixed(2)),
                 categoryId: product.categoryId,
                 isForSale: product.isForSale ?? true,
-                isStockControlled: product.isStockControlled ?? true,
+                isStockControlled: product.isStockControlled ?? false,
                 imageUrl: product.imageUrl || ''
             });
         } else {
             setEditingProduct(null);
-            setProductForm({ name: '', price: '', categoryId: allCategories[0]?.id || '1', isForSale: true, isStockControlled: true, imageUrl: '' });
+            setProductForm({ name: '', price: '', categoryId: allCategories[0]?.id || '1', isForSale: true, isStockControlled: false, imageUrl: '' });
         }
         setIsProductModalOpen(true);
     };
@@ -130,11 +135,16 @@ export function PDV() {
     // Fix Missing States (re-insert)
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [productForm, setProductForm] = useState({ name: '', price: '', categoryId: '1', isForSale: true, isStockControlled: true, imageUrl: '' });
+    const [productForm, setProductForm] = useState({ name: '', price: '', categoryId: '1', isForSale: true, isStockControlled: false, imageUrl: '' });
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+
+    // Checkout Modal State
+    const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+    const [checkoutForm, setCheckoutForm] = useState({ customerName: '', paymentMethod: '', notes: '' });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         localStorage.setItem('@saas:cart', JSON.stringify(cart));
@@ -188,21 +198,34 @@ export function PDV() {
 
     const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
+    const openCheckout = () => {
+        if (cart.length === 0) return;
+        setCheckoutForm({ customerName: '', paymentMethod: '', notes: '' });
+        setIsCheckoutOpen(true);
+    };
+
     const handleFinishOrder = async () => {
         if (cart.length === 0) return;
+        setIsSubmitting(true);
         try {
-            const items = cart.map(c => ({ productId: c.id, quantity: c.quantity, unitPrice: c.price }));
-            await api.post('/orders', { items, customerName: 'Cliente Balcão' });
+            const items = cart.map(c => ({ productId: c.id, quantity: c.quantity, unitPrice: c.price, notes: c.notes || undefined }));
+            await api.post('/orders', {
+                items,
+                customerName: checkoutForm.customerName || 'Cliente Balcão',
+                paymentMethod: checkoutForm.paymentMethod || undefined,
+                notes: checkoutForm.notes || undefined
+            });
 
-            // Sucesso!
             setCart([]);
             localStorage.removeItem('@saas:cart');
             setIsMobileCartOpen(false);
+            setIsCheckoutOpen(false);
             setIsSuccessModalOpen(true);
-
         } catch (err) {
             alert('Erro ao criar pedido. Tente novamente.');
             console.error(err);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -333,25 +356,40 @@ export function PDV() {
                     ) : (
                         <div className="space-y-4">
                             {cart.map(item => (
-                                <div key={item.id} className="flex gap-4 items-center p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="font-semibold text-gray-800 truncate">{item.name}</h4>
-                                        <p className="text-sm text-gray-500">R$ {item.price.toFixed(2)}</p>
-                                    </div>
+                                <div key={item.id} className="p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                                    <div className="flex gap-4 items-center">
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-semibold text-gray-800 truncate">{item.name}</h4>
+                                            <p className="text-sm text-gray-500">R$ {item.price.toFixed(2)}</p>
+                                        </div>
 
-                                    <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                                        <button onClick={() => updateQuantity(item.id, -1)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-all">
-                                            <Minus className="w-4 h-4" />
-                                        </button>
-                                        <span className="w-6 text-center font-medium">{item.quantity}</span>
-                                        <button onClick={() => updateQuantity(item.id, 1)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-all">
-                                            <Plus className="w-4 h-4" />
+                                        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                                            <button onClick={() => updateQuantity(item.id, -1)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-all">
+                                                <Minus className="w-4 h-4" />
+                                            </button>
+                                            <span className="w-6 text-center font-medium">{item.quantity}</span>
+                                            <button onClick={() => updateQuantity(item.id, 1)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-all">
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
+
+                                        <button onClick={() => removeFromCart(item.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all ml-1">
+                                            <Trash2 className="w-5 h-5" />
                                         </button>
                                     </div>
-
-                                    <button onClick={() => removeFromCart(item.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all ml-1">
-                                        <Trash2 className="w-5 h-5" />
-                                    </button>
+                                    {/* Per-item notes */}
+                                    <div className="mt-2">
+                                        <div className="flex items-center gap-1.5">
+                                            <MessageSquare className="w-3 h-3 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                value={item.notes || ''}
+                                                onChange={e => updateItemNotes(item.id, e.target.value)}
+                                                className="w-full text-xs px-2 py-1 border border-gray-200 rounded-md focus:ring-1 focus:ring-primary-400 outline-none text-gray-600 placeholder-gray-300"
+                                                placeholder="Obs: sem cebola, extra queijo..."
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -364,7 +402,7 @@ export function PDV() {
                         <span className="text-3xl font-bold text-gray-900">R$ {total.toFixed(2)}</span>
                     </div>
                     <button
-                        onClick={handleFinishOrder}
+                        onClick={openCheckout}
                         disabled={cart.length === 0}
                         className="w-full py-4 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white font-bold text-lg rounded-xl shadow-lg shadow-primary-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
                     >
@@ -554,6 +592,109 @@ export function PDV() {
                                     Salvar
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Checkout */}
+            {isCheckoutOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-primary-500 to-primary-600">
+                            <h2 className="text-xl font-bold text-white">Finalizar Pedido</h2>
+                            <button onClick={() => setIsCheckoutOpen(false)} className="text-white/70 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                            {/* Resumo do pedido */}
+                            <div className="bg-gray-50 rounded-xl p-4">
+                                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Resumo do Pedido</h3>
+                                <div className="space-y-2">
+                                    {cart.map(item => (
+                                        <div key={item.id} className="flex justify-between items-center text-sm">
+                                            <div className="flex-1">
+                                                <span className="font-medium text-gray-800">{item.quantity}x {item.name}</span>
+                                                {item.notes && <span className="text-xs text-gray-400 ml-2">— {item.notes}</span>}
+                                            </div>
+                                            <span className="text-gray-600 font-medium">R$ {(item.price * item.quantity).toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="border-t border-gray-200 mt-3 pt-3 flex justify-between items-center">
+                                    <span className="font-bold text-gray-800">Total</span>
+                                    <span className="text-2xl font-black text-gray-900">R$ {total.toFixed(2)}</span>
+                                </div>
+                            </div>
+
+                            {/* Nome do Cliente */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Cliente (opcional)</label>
+                                <input
+                                    type="text"
+                                    value={checkoutForm.customerName}
+                                    onChange={e => setCheckoutForm({ ...checkoutForm, customerName: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                                    placeholder="Ex: João, Mesa 3, Delivery..."
+                                />
+                            </div>
+
+                            {/* Forma de Pagamento */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { value: 'Dinheiro', icon: <Banknote className="w-5 h-5" />, active: 'border-green-500 bg-green-50 text-green-700 shadow-sm' },
+                                        { value: 'PIX', icon: <Smartphone className="w-5 h-5" />, active: 'border-purple-500 bg-purple-50 text-purple-700 shadow-sm' },
+                                        { value: 'Cartão Débito', icon: <CreditCard className="w-5 h-5" />, active: 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' },
+                                        { value: 'Cartão Crédito', icon: <CreditCard className="w-5 h-5" />, active: 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm' },
+                                    ].map(method => (
+                                        <button
+                                            key={method.value}
+                                            type="button"
+                                            onClick={() => setCheckoutForm({ ...checkoutForm, paymentMethod: method.value })}
+                                            className={`p-3 rounded-xl border-2 flex items-center gap-2 transition-all text-sm font-medium ${checkoutForm.paymentMethod === method.value
+                                                ? method.active
+                                                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            {method.icon}
+                                            {method.value}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Observação do Pedido */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Observação do Pedido (opcional)</label>
+                                <textarea
+                                    value={checkoutForm.notes}
+                                    onChange={e => setCheckoutForm({ ...checkoutForm, notes: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all resize-none"
+                                    placeholder="Ex: Entregar na mesa 5, Troco para R$ 50..."
+                                    rows={2}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 border-t border-gray-200 flex gap-3">
+                            <button
+                                onClick={() => setIsCheckoutOpen(false)}
+                                className="flex-1 py-3 text-gray-600 bg-gray-200 rounded-xl font-medium hover:bg-gray-300 transition-colors"
+                            >
+                                Voltar
+                            </button>
+                            <button
+                                onClick={handleFinishOrder}
+                                disabled={isSubmitting}
+                                className="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 disabled:opacity-50 transition-all shadow-lg shadow-green-500/20 flex items-center justify-center gap-2"
+                            >
+                                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+                                {isSubmitting ? 'Enviando...' : 'Confirmar Pedido'}
+                            </button>
                         </div>
                     </div>
                 </div>

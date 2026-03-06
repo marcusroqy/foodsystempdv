@@ -16,7 +16,7 @@ export class OrderService {
         });
     }
 
-    async createOrder(tenantId: string, userId: string, data: { customerName?: string, items: Array<{ productId: string, quantity: number, unitPrice: number, notes?: string }> }) {
+    async createOrder(tenantId: string, userId: string, data: { customerName?: string, paymentMethod?: string, notes?: string, items: Array<{ productId: string, quantity: number, unitPrice: number, notes?: string }> }) {
         const prisma = getTenantPrisma(tenantId);
 
         // Calculates total amount
@@ -29,6 +29,8 @@ export class OrderService {
                 customerName: data.customerName,
                 totalAmount,
                 status: 'QUEUE',
+                paymentMethod: data.paymentMethod || null,
+                notes: data.notes || null,
                 items: {
                     create: data.items.map(item => ({
                         tenantId,
