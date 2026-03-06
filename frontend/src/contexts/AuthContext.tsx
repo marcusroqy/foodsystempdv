@@ -33,6 +33,7 @@ interface AuthContextType {
     token: string | null;
     login: (token: string, user: User, mustChangePassword?: boolean) => void;
     logout: () => void;
+    logoutCustomer: () => void;
     isAuthenticated: boolean;
     isLoading: boolean;
     mustChangePassword: boolean;
@@ -97,8 +98,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         delete api.defaults.headers.common['Authorization'];
     };
 
+    const logoutCustomer = () => {
+        localStorage.removeItem('@delivery:token');
+        localStorage.removeItem('@delivery:customer');
+        setToken(null);
+        setUser(null);
+        delete api.defaults.headers.common['Authorization'];
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token, isLoading, mustChangePassword, setMustChangePassword }}>
+        <AuthContext.Provider value={{ user, token, login, logout, logoutCustomer, isAuthenticated: !!token, isLoading, mustChangePassword, setMustChangePassword }}>
             {children}
         </AuthContext.Provider>
     );

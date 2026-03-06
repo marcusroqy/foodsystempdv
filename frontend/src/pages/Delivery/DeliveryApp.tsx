@@ -4,8 +4,9 @@ import { useDelivery } from '../../contexts/DeliveryContext';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../contexts/AuthContext';
 import type { DeliveryCategory, DeliveryProduct } from '../../contexts/DeliveryContext';
-import { X, Plus, Minus, ShoppingBag, Clock, CheckCircle2, PlayCircle, Package, Navigation } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, Clock, CheckCircle2, PlayCircle, Package, Navigation, User } from 'lucide-react';
 import { CheckoutModal } from './CheckoutModal';
+import { CustomerProfileModal } from './CustomerProfileModal';
 
 export function DeliveryApp() {
     const { slug } = useParams();
@@ -17,6 +18,7 @@ export function DeliveryApp() {
     const [notes, setNotes] = useState('');
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     useEffect(() => {
         if (slug) fetchMenu(slug);
@@ -62,11 +64,19 @@ export function DeliveryApp() {
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
             {/* Header / Banner da Loja */}
-            <div className="bg-primary-600 text-white p-6 shadow-md rounded-b-3xl relative overflow-hidden">
+            <div className="bg-primary-600 text-white p-6 shadow-md rounded-b-3xl relative overflow-hidden flex justify-between items-start">
                 <div className="relative z-10">
                     <h1 className="text-2xl font-black">{tenant.name}</h1>
                     <p className="opacity-80 text-sm mt-1">{tenant.address || 'Delivery & Retirada'}</p>
                 </div>
+                {customer && (
+                    <button
+                        onClick={() => setIsProfileOpen(true)}
+                        className="relative z-10 bg-white/20 hover:bg-white/30 p-2.5 rounded-full backdrop-blur-sm transition-colors"
+                    >
+                        <User className="w-6 h-6" />
+                    </button>
+                )}
             </div>
 
             {/* Rastreador de Pedidos Ativos (Se houver) */}
@@ -272,6 +282,15 @@ export function DeliveryApp() {
 
             {/* Modal de Login e Finalização */}
             <CheckoutModal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} />
+
+            {/* Modal de Perfil do Cliente */}
+            {slug && (
+                <CustomerProfileModal
+                    isOpen={isProfileOpen}
+                    onClose={() => setIsProfileOpen(false)}
+                    slug={slug}
+                />
+            )}
         </div>
     );
 }

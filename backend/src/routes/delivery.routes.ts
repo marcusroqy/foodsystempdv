@@ -14,6 +14,9 @@ routes.post('/:slug/auth/login', deliveryController.loginCustomer);
 // Protected Routes (Requires Customer Auth)
 routes.use(authMiddleware); // We will reuse the same middleware but the token will have customerId
 
+routes.get('/:slug/profile', deliveryController.getProfile);
+routes.put('/:slug/profile', deliveryController.updateProfile);
+
 routes.post('/:slug/orders', deliveryController.createOrder);
 routes.get('/:slug/orders', deliveryController.getCustomerOrders);
 

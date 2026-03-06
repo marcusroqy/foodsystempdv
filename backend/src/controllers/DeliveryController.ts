@@ -317,4 +317,59 @@ export class DeliveryController {
             return res.status(500).json({ error: 'Erro interno' });
         }
     }
+
+    // 6. Get Customer Profile
+    async getProfile(req: Request, res: Response) {
+        try {
+            const { customerId } = req.user as any;
+            if (!customerId) return res.status(401).json({ error: 'Não autorizado' });
+
+            const customer = await prisma.customer.findUnique({
+                where: { id: customerId },
+                select: { id: true, name: true, phone: true, street: true, number: true, complement: true, neighborhood: true, city: true, state: true, zipCode: true }
+            });
+
+            if (!customer) return res.status(404).json({ error: 'Cliente não encontrado' });
+
+            return res.json(customer);
+        } catch (error) {
+            console.error('Erro getProfile:', error);
+            return res.status(500).json({ error: 'Erro interno' });
+        }
+    }
+
+    // 7. Update Customer Profile
+    async updateProfile(req: Request, res: Response) {
+        try {
+            const { customerId } = req.user as any;
+            if (!customerId) return res.status(401).json({ error: 'Não autorizado' });
+
+            const { name, currentPassword, newPassword } = req.body;
+
+            const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+            if (!customer) return res.status(404).json({ error: 'Cliente não encontrado' });
+
+            const updateData: any = {};
+            if (name) updateData.name = name;
+
+            if (currentPassword && newPassword) {
+                const isMatch = await bcrypt.compare(currentPassword, customer.passwordHash);
+                if (!isMatch) {
+                    return res.status(400).json({ error: 'Senha atual incorreta' });
+                }
+                updateData.passwordHash = await bcrypt.hash(newPassword, 8);
+            }
+
+            const updatedCustomer = await prisma.customer.update({
+                where: { id: customerId },
+                data: updateData,
+                select: { id: true, name: true, phone: true }
+            });
+
+            return res.json(updatedCustomer);
+        } catch (error) {
+            console.error('Erro updateProfile:', error);
+            return res.status(500).json({ error: 'Erro interno' });
+        }
+    }
 }
