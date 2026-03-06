@@ -10,6 +10,7 @@ import inventoryRouter from './routes/inventory.routes';
 import tenantRouter from './routes/tenant.routes';
 import userRouter from './routes/user.routes';
 import { notificationRoutes } from './routes/notification.routes';
+import deliveryRoutes from './routes/delivery.routes';
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use('/api/inventory', inventoryRouter);
 app.use('/api/tenant', tenantRouter);
 app.use('/api/users', userRouter);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/delivery', deliveryRoutes);
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'SaaS API is running' });

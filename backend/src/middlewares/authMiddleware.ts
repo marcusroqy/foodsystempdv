@@ -11,9 +11,10 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as {
-            userId: string;
+            userId?: string;
+            customerId?: string; // App de Delivery
             tenantId: string;
-            role: string;
+            role?: string;
         };
 
         req.user = decoded;

@@ -13,6 +13,10 @@ export class NotificationController {
                 return res.status(400).json({ error: 'Subscription is invalid' });
             }
 
+            if (!userId) {
+                return res.status(401).json({ error: 'User is required to subscribe' });
+            }
+
             const sub = await notificationService.subscribeUser(tenantId, userId, subscription);
             res.status(201).json(sub);
         } catch (error: any) {
@@ -25,6 +29,10 @@ export class NotificationController {
     async testSend(req: Request, res: Response) {
         try {
             const { tenantId, userId } = req.user!;
+            if (!userId) {
+                return res.status(401).json({ error: 'User is required for notifications' });
+            }
+
             await notificationService.sendNotificationToUser(tenantId, userId, {
                 title: 'Teste de Notificação',
                 body: 'Sua assinatura foi configurada com sucesso!',
