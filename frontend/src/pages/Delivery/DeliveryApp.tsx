@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useDelivery } from '../../contexts/DeliveryContext';
 import type { DeliveryCategory, DeliveryProduct } from '../../contexts/DeliveryContext';
 import { X, Plus, Minus, ShoppingBag } from 'lucide-react';
+import { CheckoutModal } from './CheckoutModal';
 
 export function DeliveryApp() {
     const { slug } = useParams();
@@ -13,6 +14,7 @@ export function DeliveryApp() {
     const [quantity, setQuantity] = useState(1);
     const [notes, setNotes] = useState('');
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
     useEffect(() => {
         if (slug) {
@@ -192,13 +194,19 @@ export function DeliveryApp() {
                                 <span className="text-gray-600 font-medium">Total do Pedido</span>
                                 <span className="text-3xl font-black text-gray-900">R$ {cartTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                             </div>
-                            <button className="w-full bg-primary-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-primary-700 transition shadow-lg shadow-primary-500/30">
+                            <button
+                                onClick={() => { setIsCartOpen(false); setIsCheckoutOpen(true); }}
+                                className="w-full bg-primary-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-primary-700 transition shadow-lg shadow-primary-500/30"
+                            >
                                 Escolher Forma de Pagamento
                             </button>
                         </div>
                     </div>
                 </div>
             )}
+
+            {/* Modal de Login e Finalização */}
+            <CheckoutModal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} />
         </div>
     );
 }
