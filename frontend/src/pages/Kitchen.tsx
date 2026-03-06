@@ -155,7 +155,7 @@ export function Kitchen() {
         }
     }, []);
 
-    const playNotificationSound = (newOrdersCount: number, latestOrder?: Order) => {
+    const playNotificationSound = (latestOrder?: Order) => {
         // 1. Audio element beep
         if (!isAudioEnabled) return;
 
@@ -249,7 +249,7 @@ export function Kitchen() {
                 if (newOrders.length > 0) {
                     const latestOrder = newOrders[newOrders.length - 1]; // Get the most recent one for dictation
                     // Play sound + show browser notification
-                    playNotificationSound(newOrders.length, latestOrder);
+                    playNotificationSound(latestOrder);
                     showBrowserNotification(newOrders.length);
                 }
             }
