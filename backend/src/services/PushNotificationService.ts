@@ -1,12 +1,19 @@
 import webpush from 'web-push';
 import { prisma } from '../repositories/prisma';
 
-// Configure Web Push
-webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:admin@pastelaria.com',
-    process.env.VAPID_PUBLIC_KEY || '',
-    process.env.VAPID_PRIVATE_KEY || ''
-);
+let isWebPushConfigured = false;
+
+const getWebPush = () => {
+    if (!isWebPushConfigured) {
+        webpush.setVapidDetails(
+            process.env.VAPID_SUBJECT || 'mailto:admin@pastelaria.com',
+            process.env.VAPID_PUBLIC_KEY || '',
+            process.env.VAPID_PRIVATE_KEY || ''
+        );
+        isWebPushConfigured = true;
+    }
+    return webpush;
+};
 
 export class PushNotificationService {
     async subscribeUser(tenantId: string, userId: string, subscription: any) {
@@ -48,7 +55,7 @@ export class PushNotificationService {
                 }
             };
 
-            return webpush.sendNotification(pushSub, JSON.stringify(payload)).catch(err => {
+            return getWebPush().sendNotification(pushSub, JSON.stringify(payload)).catch(err => {
                 if (err.statusCode === 404 || err.statusCode === 410) {
                     console.log('Subscription has expired or is no longer valid: ', err);
                     return prisma.pushSubscription.delete({ where: { id: sub.id } });
