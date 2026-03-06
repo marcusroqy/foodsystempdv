@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Wallet, History, FileText, Plus, X, CreditCard, Banknote, Smartphone, BarChart3 } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Wallet, History, FileText, Plus, X, CreditCard, Banknote, Smartphone, BarChart3, Pencil, Trash2 } from 'lucide-react';
 import { api } from '../contexts/AuthContext';
 import { formatCurrency, parseCurrency } from '../utils/format';
 
@@ -17,6 +17,7 @@ interface Transaction {
 export function Finance() {
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({ description: '', amount: '', type: 'INCOME', category: 'Vendas' });
 
     const { data: transactions = [] } = useQuery({
@@ -63,23 +64,77 @@ export function Finance() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['finance-data'] });
-            setIsModalOpen(false);
-            setFormData({ description: '', amount: '', type: 'INCOME', category: 'Vendas' });
+            closeModal();
         },
         onError: () => {
             alert('Erro ao salvar transação.');
-            setIsModalOpen(false);
+            closeModal();
         }
     });
 
+    const updateTransactionMutation = useMutation({
+        mutationFn: async (updatedTransaction: any) => {
+            return api.put(`/finances/${editingId}`, updatedTransaction);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['finance-data'] });
+            closeModal();
+        },
+        onError: () => {
+            alert('Erro ao atualizar transação.');
+            closeModal();
+        }
+    });
+
+    const deleteTransactionMutation = useMutation({
+        mutationFn: async (id: string) => {
+            return api.delete(`/finances/${id}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['finance-data'] });
+        },
+        onError: () => {
+            alert('Erro ao excluir transação.');
+        }
+    });
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setEditingId(null);
+        setFormData({ description: '', amount: '', type: 'INCOME', category: 'Vendas' });
+    };
+
+    const handleEdit = (transaction: Transaction) => {
+        setEditingId(transaction.id);
+        setFormData({
+            description: transaction.description,
+            amount: transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+            type: transaction.type,
+            category: transaction.category
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = (id: string) => {
+        if (window.confirm('Tem certeza que deseja excluir este lançamento?')) {
+            deleteTransactionMutation.mutate(id);
+        }
+    };
+
     const handleSaveTransaction = (e: React.FormEvent) => {
         e.preventDefault();
-        createTransactionMutation.mutate({
+        const payload = {
             description: formData.description,
             amount: parseCurrency(formData.amount),
             type: formData.type,
             category: formData.category
-        });
+        };
+
+        if (editingId) {
+            updateTransactionMutation.mutate(payload);
+        } else {
+            createTransactionMutation.mutate(payload);
+        }
     };
 
     // Count orders today
@@ -250,6 +305,7 @@ export function Finance() {
                                 <th className="px-6 py-4 font-semibold tracking-wider">Pagamento</th>
                                 <th className="px-6 py-4 font-semibold tracking-wider">Data</th>
                                 <th className="px-6 py-4 font-semibold tracking-wider text-right">Valor</th>
+                                <th className="px-6 py-4 font-semibold tracking-wider text-right w-24">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -282,6 +338,12 @@ export function Finance() {
                                     <td className={`px-6 py-4 text-right font-bold ${transaction.type === 'INCOME' ? 'text-green-600' : 'text-gray-900'}`}>
                                         {transaction.type === 'INCOME' ? '+' : '-'} R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button onClick={() => handleEdit(transaction)} className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors" title="Editar"><Pencil className="w-4 h-4" /></button>
+                                            <button onClick={() => handleDelete(transaction.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Excluir"><Trash2 className="w-4 h-4" /></button>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -313,6 +375,10 @@ export function Finance() {
                                     <div className={`text-right font-bold whitespace-nowrap ${transaction.type === 'INCOME' ? 'text-green-600' : 'text-gray-900'}`}>
                                         {transaction.type === 'INCOME' ? '+' : '-'} <br className="sm:hidden" />
                                         R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        <div className="flex items-center justify-end gap-1 mt-2">
+                                            <button onClick={() => handleEdit(transaction)} className="p-1.5 text-gray-400 hover:text-primary-600 bg-gray-50 hover:bg-primary-50 rounded-md transition-colors"><Pencil className="w-4 h-4" /></button>
+                                            <button onClick={() => handleDelete(transaction.id)} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded-md transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -331,9 +397,9 @@ export function Finance() {
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                             <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                                 <DollarSign className="w-5 h-5 text-primary-500" />
-                                Nova Transação
+                                {editingId ? 'Editar Lançamento' : 'Nova Transação'}
                             </h2>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors">
+                            <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors">
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
@@ -372,7 +438,7 @@ export function Finance() {
                             </div>
 
                             <div className="pt-4 flex gap-3">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
+                                <button type="button" onClick={closeModal} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
                                 <button type="submit" className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors shadow-md shadow-primary-500/20 text-center">Salvar Lançamento</button>
                             </div>
                         </form>
