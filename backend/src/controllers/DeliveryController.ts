@@ -10,7 +10,7 @@ export class DeliveryController {
             const slug = req.params.slug as string;
             const tenant = await prisma.tenant.findUnique({
                 where: { slug },
-                select: { id: true, name: true, phone: true, address: true, status: true }
+                select: { id: true, name: true, phone: true, address: true, status: true, slug: true }
             });
 
             if (!tenant) return res.status(404).json({ error: 'Loja não encontrada' });
