@@ -11,6 +11,7 @@ export async function runMigrations() {
         await prisma.$executeRawUnsafe(`ALTER TABLE products ADD COLUMN IF NOT EXISTS "minStock" DECIMAL(10,3) DEFAULT 0`);
         await prisma.$executeRawUnsafe(`ALTER TABLE products ADD COLUMN IF NOT EXISTS "costPrice" DECIMAL(10,2) DEFAULT 0`);
         await prisma.$executeRawUnsafe(`ALTER TABLE products ADD COLUMN IF NOT EXISTS supplier VARCHAR(255)`);
+        await prisma.$executeRawUnsafe(`ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(255)`);
         console.log('✅ Database migrations applied successfully');
     } catch (error) {
         console.error('❌ Migration error (non-fatal):', error);

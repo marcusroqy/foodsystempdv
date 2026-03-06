@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, ArrowUpRight, ArrowDownRight, Search, AlertTriangle, Activity, PieChart, PackageSearch, X, Edit2, Loader2, Plus, Trash2, Check, Settings } from 'lucide-react';
+import { Package, ArrowUpRight, ArrowDownRight, Search, AlertTriangle, Activity, PackageSearch, X, Edit2, Loader2, Plus, Trash2, Check, Settings, DollarSign } from 'lucide-react';
 import { api } from '../contexts/AuthContext';
 import { formatQuantity, parseQuantity } from '../utils/format';
 
@@ -13,6 +13,7 @@ interface StockItem {
     unit: string;
     costPrice: number;
     supplier: string;
+    brand: string;
     lastUpdated: string;
     status: 'GOOD' | 'LOW' | 'OUT';
     categoryName: string;
@@ -69,15 +70,15 @@ export function Inventory() {
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<StockItem | null>(null);
-    const [adjustForm, setAdjustForm] = useState({ type: 'IN', quantity: '', reason: '' });
+    const [adjustForm, setAdjustForm] = useState({ type: 'IN', quantity: '', reason: '', costPerUnit: '' });
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editForm, setEditForm] = useState({ name: '', categoryId: '', imageUrl: '', unit: 'UN', minStock: '', costPrice: '', supplier: '' });
+    const [editForm, setEditForm] = useState({ name: '', categoryId: '', imageUrl: '', unit: 'UN', minStock: '', costPrice: '', supplier: '', brand: '' });
 
     // Create Modal State
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [createForm, setCreateForm] = useState({ name: '', categoryId: '', imageUrl: '', unit: 'UN', minStock: '', costPrice: '', supplier: '' });
+    const [createForm, setCreateForm] = useState({ name: '', categoryId: '', imageUrl: '', unit: 'UN', minStock: '', costPrice: '', supplier: '', brand: '' });
     const [smartSuggestion, setSmartSuggestion] = useState<string | null>(null);
 
     // ==========================================
@@ -119,7 +120,7 @@ export function Inventory() {
 
     const outOfStockCount = items.filter(i => i.status === 'OUT').length;
     const lowStockCount = items.filter(i => i.status === 'LOW').length;
-    const totalValueMock = "R$ 0,00"; // Fake info for styling purposes
+    const totalCostSpent = items.reduce((acc, item) => acc + (item.costPrice * item.quantity), 0);
 
     // Category Modal State
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -131,7 +132,7 @@ export function Inventory() {
 
     const openAdjustModal = (item: StockItem) => {
         setSelectedItem(item);
-        setAdjustForm({ type: 'IN', quantity: '', reason: 'Ajuste Manual' });
+        setAdjustForm({ type: 'IN', quantity: '', reason: 'Ajuste Manual', costPerUnit: item.costPrice ? String(item.costPrice) : '' });
         setIsAdjustModalOpen(true);
     };
 
@@ -146,12 +147,20 @@ export function Inventory() {
 
     const handleSaveAdjustment = async (e: React.FormEvent) => {
         e.preventDefault();
-        adjustMutation.mutate({
+        const qty = parseQuantity(adjustForm.quantity);
+        await adjustMutation.mutateAsync({
             productId: selectedItem?.id,
             type: adjustForm.type,
-            quantity: parseQuantity(adjustForm.quantity),
+            quantity: qty,
             reason: adjustForm.reason
         });
+        // If entering stock, also update the cost price on the product
+        if (adjustForm.type === 'IN' && adjustForm.costPerUnit && selectedItem) {
+            const costVal = parseFloat(adjustForm.costPerUnit.replace(',', '.'));
+            if (!isNaN(costVal) && costVal > 0) {
+                await api.put(`/products/${selectedItem.id}`, { costPrice: costVal });
+            }
+        }
     };
 
     const openEditModal = (item: StockItem) => {
@@ -163,7 +172,8 @@ export function Inventory() {
             unit: item.unit || 'UN',
             minStock: item.minQuantity ? String(item.minQuantity) : '',
             costPrice: item.costPrice ? String(item.costPrice) : '',
-            supplier: item.supplier || ''
+            supplier: item.supplier || '',
+            brand: item.brand || ''
         });
         setIsEditModalOpen(true);
     };
@@ -187,7 +197,8 @@ export function Inventory() {
             unit: editForm.unit,
             minStock: editForm.minStock ? parseFloat(editForm.minStock.replace(',', '.')) : 0,
             costPrice: editForm.costPrice ? parseFloat(editForm.costPrice.replace(',', '.')) : 0,
-            supplier: editForm.supplier || null
+            supplier: editForm.supplier || null,
+            brand: editForm.brand || null
         });
     };
 
@@ -213,9 +224,19 @@ export function Inventory() {
             unit: createForm.unit,
             minStock: createForm.minStock ? parseFloat(createForm.minStock.replace(',', '.')) : 0,
             costPrice: createForm.costPrice ? parseFloat(createForm.costPrice.replace(',', '.')) : 0,
-            supplier: createForm.supplier || null
+            supplier: createForm.supplier || null,
+            brand: createForm.brand || null
         });
     };
+
+    const deleteMutation = useMutation({
+        mutationFn: async (id: string) => api.delete(`/products/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['inventory-data'] });
+            queryClient.invalidateQueries({ queryKey: ['pdv-data'] });
+        },
+        onError: () => alert('Erro ao excluir item. Verifique se não há pedidos vinculados.')
+    });
 
     const createCategoryMutation = useMutation({
         mutationFn: async (data: any) => api.post('/categories', data),
@@ -324,15 +345,15 @@ export function Inventory() {
 
                 <div className="bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-2xl shadow-xl shadow-gray-900/20 flex flex-col justify-between text-white relative overflow-hidden">
                     <div className="absolute right-0 bottom-0 opacity-10">
-                        <PieChart className="w-32 h-32 transform translate-x-4 space-y-4" />
+                        <DollarSign className="w-32 h-32 transform translate-x-4" />
                     </div>
                     <div className="relative z-10 mb-4">
-                        <p className="text-sm font-medium text-gray-400 mb-1">Custo Total Imobilizado</p>
-                        <h3 className="text-3xl font-bold tracking-tight">{totalValueMock}</h3>
+                        <p className="text-sm font-medium text-gray-400 mb-1">Custo Total em Estoque</p>
+                        <h3 className="text-3xl font-bold tracking-tight">R$ {totalCostSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                     </div>
-                    <button className="relative z-10 w-full py-2 bg-white/10 hover:bg-white/20 transition-colors rounded-lg text-sm font-medium text-white flex justify-center items-center gap-2 backdrop-blur-sm">
-                        Ver Relatório Financeiro <ArrowUpRight className="w-4 h-4" />
-                    </button>
+                    <div className="relative z-10 text-xs text-gray-400">
+                        Baseado no custo unitário × quantidade atual
+                    </div>
                 </div>
             </div>
 
@@ -345,7 +366,7 @@ export function Inventory() {
                     </h2>
 
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
-                        <button onClick={() => { setCreateForm({ name: '', categoryId: '', imageUrl: '', unit: 'UN', minStock: '', costPrice: '', supplier: '' }); setSmartSuggestion(null); setIsCreateModalOpen(true); }} className="bg-gray-900 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-800 font-medium transition-colors text-sm whitespace-nowrap shadow-sm">
+                        <button onClick={() => { setCreateForm({ name: '', categoryId: '', imageUrl: '', unit: 'UN', minStock: '', costPrice: '', supplier: '', brand: '' }); setSmartSuggestion(null); setIsCreateModalOpen(true); }} className="bg-gray-900 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-800 font-medium transition-colors text-sm whitespace-nowrap shadow-sm">
                             <Plus className="w-4 h-4" /> Novo Item
                         </button>
                         <div className="relative w-full sm:w-64">
@@ -425,6 +446,9 @@ export function Inventory() {
                                             <button onClick={() => openEditModal(item)} className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors" title="Editar">
                                                 <Edit2 className="w-4 h-4" />
                                             </button>
+                                            <button onClick={() => { if (confirm(`Excluir "${item.name}"? Essa ação é irreversível.`)) deleteMutation.mutate(item.id); }} className="text-red-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-colors" title="Excluir">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                             <button onClick={() => openAdjustModal(item)} className="text-primary-600 font-medium hover:text-primary-800 text-sm bg-primary-50 px-3 py-1.5 rounded-lg">
                                                 Ajustar
                                             </button>
@@ -477,6 +501,9 @@ export function Inventory() {
                                         <button onClick={() => openEditModal(item)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-100" title="Editar">
                                             <Edit2 className="w-4 h-4" />
                                         </button>
+                                        <button onClick={() => { if (confirm(`Excluir "${item.name}"?`)) deleteMutation.mutate(item.id); }} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors border border-red-100" title="Excluir">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
                                         <button onClick={() => openAdjustModal(item)} className="text-primary-600 font-medium text-sm bg-primary-50 px-4 py-2 rounded-lg active:scale-95 transition-transform border border-primary-100">
                                             Ajustar
                                         </button>
@@ -517,13 +544,36 @@ export function Inventory() {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    {adjustForm.type === 'SET' ? 'Nova Quantidade Exata' : 'Quantidade para Ajustar'}
+                                    {adjustForm.type === 'SET' ? 'Nova Quantidade Exata' : `Quantidade (${selectedItem.unit})`}
                                 </label>
-                                <input type="text" required value={adjustForm.quantity} onChange={e => setAdjustForm({ ...adjustForm, quantity: formatQuantity(e.target.value) })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: 5 ou 1,5" />
+                                <input type="text" required value={adjustForm.quantity} onChange={e => setAdjustForm({ ...adjustForm, quantity: formatQuantity(e.target.value) })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder={`Ex: 5 ${selectedItem.unit.toLowerCase()}`} />
                             </div>
+                            {adjustForm.type === 'IN' && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Custo Unitário (R$ por {selectedItem.unit})</label>
+                                        <input type="text" value={adjustForm.costPerUnit} onChange={e => setAdjustForm({ ...adjustForm, costPerUnit: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: 32,90" />
+                                    </div>
+                                    {adjustForm.quantity && adjustForm.costPerUnit && (() => {
+                                        const qty = parseQuantity(adjustForm.quantity);
+                                        const cost = parseFloat(adjustForm.costPerUnit.replace(',', '.'));
+                                        const total = qty * cost;
+                                        if (!isNaN(total) && total > 0) {
+                                            return (
+                                                <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
+                                                    <div className="text-xs text-green-600 font-medium mb-1">💰 Total desta entrada:</div>
+                                                    <div className="text-xl font-bold text-green-800">R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                                    <div className="text-[10px] text-green-500 mt-0.5">{adjustForm.quantity} {selectedItem.unit} × R$ {adjustForm.costPerUnit}/{selectedItem.unit}</div>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+                                </>
+                            )}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Motivo do Ajuste</label>
-                                <input type="text" value={adjustForm.reason} onChange={e => setAdjustForm({ ...adjustForm, reason: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: Quebra, Venda manual, Corrigir saldo" />
+                                <input type="text" value={adjustForm.reason} onChange={e => setAdjustForm({ ...adjustForm, reason: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: Compra fornecedor, Quebra, Corrigir saldo" />
                             </div>
                             <div className="pt-4 flex gap-3">
                                 <button type="button" onClick={() => setIsAdjustModalOpen(false)} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
@@ -604,6 +654,11 @@ export function Inventory() {
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor (Opcional)</label>
                                 <input type="text" value={editForm.supplier} onChange={e => setEditForm({ ...editForm, supplier: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: Distribuidora ABC" />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Marca (Opcional)</label>
+                                <input type="text" value={editForm.brand} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: Sadia, Seara, Qualitá" />
                             </div>
 
                             <div>
@@ -715,6 +770,11 @@ export function Inventory() {
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor (Opcional)</label>
                                 <input type="text" value={createForm.supplier} onChange={e => setCreateForm({ ...createForm, supplier: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: Distribuidora ABC" />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Marca (Opcional)</label>
+                                <input type="text" value={createForm.brand} onChange={e => setCreateForm({ ...createForm, brand: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all" placeholder="Ex: Sadia, Seara, Qualitá" />
                             </div>
 
                             <div>

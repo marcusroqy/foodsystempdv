@@ -110,6 +110,7 @@ model Product {
   minStock     Decimal  @default(0) @db.Decimal(10, 3) // Estoque mínimo para alerta
   costPrice    Decimal  @default(0) @db.Decimal(10, 2) // Preço de custo unitário
   supplier     String?  // Nome do fornecedor principal
+  brand        String?  // Marca do produto (ex: Sadia, Seara)
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

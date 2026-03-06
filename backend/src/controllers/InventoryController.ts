@@ -35,7 +35,8 @@ export class InventoryController {
                     lastUpdated: p.updatedAt,
                     status: status,
                     categoryName: p.category?.name || 'Sem Categoria',
-                    imageUrl: p.imageUrl || null
+                    imageUrl: p.imageUrl || null,
+                    brand: p.brand || ''
                 };
             });
 
