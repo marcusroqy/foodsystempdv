@@ -4,7 +4,7 @@ import { useDelivery } from '../../contexts/DeliveryContext';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../contexts/AuthContext';
 import type { DeliveryCategory, DeliveryProduct } from '../../contexts/DeliveryContext';
-import { X, Plus, Minus, ShoppingBag, Clock, CheckCircle2, Package, PlayCircle } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, Clock, CheckCircle2, PlayCircle } from 'lucide-react';
 import { CheckoutModal } from './CheckoutModal';
 
 export function DeliveryApp() {
