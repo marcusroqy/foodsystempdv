@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDelivery } from '../../contexts/DeliveryContext';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../contexts/AuthContext';
 import type { DeliveryCategory, DeliveryProduct } from '../../contexts/DeliveryContext';
-import { X, Plus, Minus, ShoppingBag } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, Clock, CheckCircle2, Package, PlayCircle } from 'lucide-react';
 import { CheckoutModal } from './CheckoutModal';
 
 export function DeliveryApp() {
     const { slug } = useParams();
-    const { fetchMenu, tenant, menu, cart, cartTotal, cartCount, addToCart, removeFromCart, updateCartItem, isLoading, error } = useDelivery();
+    const { fetchMenu, tenant, menu, cart, cartTotal, cartCount, addToCart, removeFromCart, updateCartItem, isLoading, error, customer } = useDelivery();
 
     // UI State
     const [selectedProduct, setSelectedProduct] = useState<DeliveryProduct | null>(null);
@@ -17,10 +19,24 @@ export function DeliveryApp() {
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
     useEffect(() => {
-        if (slug) {
-            fetchMenu(slug);
-        }
+        if (slug) fetchMenu(slug);
     }, [slug]);
+
+    // Active Orders Query for Logged-in Customer
+    const token = localStorage.getItem('@FoodSystem:CustomerToken');
+    const { data: myOrders = [] } = useQuery({
+        queryKey: ['my-delivery-orders', slug, customer?.id],
+        queryFn: async () => {
+            if (!slug || !token) return [];
+            const res = await api.get(`/delivery/${slug}/orders`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            // We only care about active ongoing orders for the top tracker
+            return res.data.filter((o: any) => o.status !== 'CANCELED');
+        },
+        enabled: !!slug && !!token && !!customer,
+        refetchInterval: 15000 // Polling every 15s to see if kitchen prepared it
+    });
 
     if (isLoading) {
         return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-primary-500 font-bold">Carregando Cardápio...</div>;
@@ -46,12 +62,55 @@ export function DeliveryApp() {
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
             {/* Header / Banner da Loja */}
-            <div className="bg-primary-600 text-white p-6 shadow-md rounded-b-3xl">
-                <h1 className="text-2xl font-black">{tenant.name}</h1>
-                <p className="opacity-80 text-sm mt-1">{tenant.address || 'Delivery & Retirada'}</p>
+            <div className="bg-primary-600 text-white p-6 shadow-md rounded-b-3xl relative overflow-hidden">
+                <div className="relative z-10">
+                    <h1 className="text-2xl font-black">{tenant.name}</h1>
+                    <p className="opacity-80 text-sm mt-1">{tenant.address || 'Delivery & Retirada'}</p>
+                </div>
             </div>
 
-            {/* Categorias e Produtos (Placeholder) */}
+            {/* Rastreador de Pedidos Ativos (Se houver) */}
+            {myOrders.length > 0 && (
+                <div className="px-4 mt-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
+                        {myOrders.map((order: any) => (
+                            <div key={order.id} className="p-4">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                            Pedido #{order.id.slice(-4).toUpperCase()}
+                                        </h3>
+                                        <span className="text-xs text-gray-500 font-medium">
+                                            {order.orderType === 'DELIVERY' ? 'Entrega' : 'Retirada'} • R$ {Number(order.totalAmount).toFixed(2)}
+                                        </span>
+                                    </div>
+                                    {order.status === 'QUEUE' && (
+                                        <span className="bg-yellow-100 text-yellow-800 text-[10px] uppercase font-bold px-3 py-1 rounded-full flex gap-1.5 items-center"><Clock className="w-3 h-3" /> Na Fila</span>
+                                    )}
+                                    {order.status === 'PREPARING' && (
+                                        <span className="bg-blue-100 text-blue-800 text-[10px] uppercase font-bold px-3 py-1 rounded-full flex gap-1.5 items-center"><PlayCircle className="w-3 h-3 animate-pulse" /> Preparando</span>
+                                    )}
+                                    {order.status === 'COMPLETED' && (
+                                        <span className="bg-green-100 text-green-800 text-[10px] uppercase font-bold px-3 py-1 rounded-full flex gap-1.5 items-center"><CheckCircle2 className="w-3 h-3" /> Pronto</span>
+                                    )}
+                                </div>
+                                <div className="space-y-1.5">
+                                    {order.items.slice(0, 3).map((it: any) => (
+                                        <div key={it.id} className="text-sm text-gray-600 flex items-center gap-2">
+                                            <span className="font-bold text-gray-400">{it.quantity}x</span> {it.product.name}
+                                        </div>
+                                    ))}
+                                    {order.items.length > 3 && (
+                                        <div className="text-xs text-gray-400 font-medium">+ {order.items.length - 3} itens</div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Categorias e Produtos */}
             <div className="p-4 space-y-6 mt-4">
                 {menu.map((category: DeliveryCategory) => (
                     <div key={category.id}>
