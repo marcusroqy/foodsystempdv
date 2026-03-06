@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { prisma } from '../repositories/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { PushNotificationService } from '../services/PushNotificationService';
+
+const notificationService = new PushNotificationService();
 
 export class DeliveryController {
     // 1. Get Tenant details by slug
@@ -203,6 +206,86 @@ export class DeliveryController {
                 },
                 include: { items: true }
             });
+
+            // ==========================================
+            // DEDUCT INVENTORY BASED ON FICHA TÉCNICA
+            // ==========================================
+            for (const item of items) {
+                const product = await prisma.product.findUnique({
+                    where: { id: item.productId, tenantId: tenant.id },
+                    include: { recipes: true }
+                });
+
+                if (!product) continue;
+
+                if (product.isStockControlled && product.isForSale && product.recipes.length === 0) {
+                    await prisma.inventoryTransaction.create({
+                        data: {
+                            tenantId: tenant.id,
+                            productId: product.id,
+                            type: 'OUT',
+                            quantity: item.quantity,
+                            reason: `Venda App - Pedido ${order.id}`
+                        }
+                    });
+                } else {
+                    for (const recipeItem of product.recipes) {
+                        await prisma.inventoryTransaction.create({
+                            data: {
+                                tenantId: tenant.id,
+                                productId: recipeItem.ingredientId,
+                                type: 'OUT',
+                                quantity: Number(recipeItem.quantity) * item.quantity,
+                                reason: `Consumo Ficha Técnica (App) - Produto ${product.name} (Pedido ${order.id})`
+                            }
+                        });
+                    }
+                }
+            }
+
+            // ==========================================
+            // DEDUCT GLOBAL ORDER PACKAGING (SACOLA)
+            // ==========================================
+            let needsBag = false;
+            for (const item of items) {
+                const product = await prisma.product.findUnique({
+                    where: { id: item.productId, tenantId: tenant.id },
+                    include: { recipes: true }
+                });
+                if (product && product.recipes.length > 0) {
+                    needsBag = true;
+                    break;
+                }
+            }
+
+            if (needsBag) {
+                const sacola = await prisma.product.findFirst({
+                    where: { tenantId: tenant.id, name: { contains: 'Sacola', mode: 'insensitive' }, isForSale: false }
+                });
+
+                if (sacola) {
+                    await prisma.inventoryTransaction.create({
+                        data: {
+                            tenantId: tenant.id,
+                            productId: sacola.id,
+                            type: 'OUT',
+                            quantity: 1,
+                            reason: `Embalagem (1 por Compra App) - Pedido ${order.id}`
+                        }
+                    });
+                }
+            }
+
+            // Send Notification to ALL subscribed users (Kitchen, Owner, Manager, etc.)
+            try {
+                await notificationService.sendNotificationToAllSubscribers(tenant.id, {
+                    title: '🛎️ Novo Pedido do Aplicativo!',
+                    body: `Pedido Delivery #${order.id.slice(-4).toUpperCase()} - ${customer.name} - ${items.length} itens.`,
+                    url: '/cozinha'
+                });
+            } catch (notifyError) {
+                console.error('Failed to notify kitchen from Delivery app:', notifyError);
+            }
 
             // Note: We don't create FinancialTransaction here. It's done when status changes to COMPLETED.
 
