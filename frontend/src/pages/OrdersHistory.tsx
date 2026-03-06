@@ -22,6 +22,8 @@ interface Order {
     status: 'QUEUE' | 'PREPARING' | 'COMPLETED' | 'CANCELED';
     totalAmount: string | number;
     createdAt: string;
+    orderType?: 'DELIVERY' | 'PICKUP' | 'TABLE' | null;
+    deliveryAddress?: string | null;
     items: OrderItem[];
 }
 
@@ -49,7 +51,7 @@ export function OrdersHistory() {
             const res = await api.get('/orders');
             return res.data as Order[];
         },
-        staleTime: 1000 * 60 * 5, // 5 minutes cache
+        refetchInterval: 15000, // Refresh automatically every 15s to see new delivery orders
     });
 
     const updateStatusMutation = useMutation({
@@ -180,6 +182,16 @@ export function OrdersHistory() {
                                                     <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
                                                         <Calendar className="w-3.5 h-3.5" />
                                                         {formatDate(order.createdAt)}
+                                                        {order.orderType === 'DELIVERY' && (
+                                                            <span className="ml-2 bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider">
+                                                                Delivery
+                                                            </span>
+                                                        )}
+                                                        {order.orderType === 'PICKUP' && (
+                                                            <span className="ml-2 bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider">
+                                                                Retirada
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -270,6 +282,15 @@ export function OrdersHistory() {
                                         </span>
                                     </div>
                                 </div>
+
+                                {selectedOrder.deliveryAddress && (
+                                    <div className="mt-4 pt-4 border-t border-gray-200">
+                                        <span className="block text-gray-500 text-xs uppercase font-bold tracking-wider mb-1">Endereço de Entrega</span>
+                                        <div className="flex items-start gap-2 bg-blue-50/50 p-2 rounded text-sm text-gray-700">
+                                            <span className="font-medium">{selectedOrder.deliveryAddress}</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Itens Consumidos</h3>
