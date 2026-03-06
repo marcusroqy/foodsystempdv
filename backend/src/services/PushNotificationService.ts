@@ -77,4 +77,31 @@ export class PushNotificationService {
             await this.sendNotificationToUser(tenantId, user.id, payload);
         }
     }
+
+    async sendNotificationToAllSubscribers(tenantId: string, payload: any) {
+        const subscriptions = await prisma.pushSubscription.findMany({
+            where: { tenantId }
+        });
+
+        const promises = subscriptions.map(sub => {
+            const pushSub = {
+                endpoint: sub.endpoint,
+                keys: {
+                    p256dh: sub.p256dh,
+                    auth: sub.auth,
+                }
+            };
+
+            return getWebPush().sendNotification(pushSub, JSON.stringify(payload)).catch(err => {
+                if (err.statusCode === 404 || err.statusCode === 410) {
+                    console.log('Subscription expired, removing:', sub.id);
+                    return prisma.pushSubscription.delete({ where: { id: sub.id } });
+                } else {
+                    console.log('Error sending push notification', err);
+                }
+            });
+        });
+
+        await Promise.all(promises);
+    }
 }

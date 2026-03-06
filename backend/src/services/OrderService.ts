@@ -117,11 +117,11 @@ export class OrderService {
             }
         }
 
-        // Send Notification to Kitchen
+        // Send Notification to ALL subscribed users (Kitchen, Owner, Manager, etc.)
         try {
-            await notificationService.sendNotificationToRole(tenantId, 'KITCHEN', {
+            await notificationService.sendNotificationToAllSubscribers(tenantId, {
                 title: '🛎️ Novo Pedido na Cozinha!',
-                body: `Pedido #${order.id.split('-')[0].toUpperCase()} - ${data.items.length} itens.`,
+                body: `Pedido #${order.id.slice(-4).toUpperCase()} - ${data.customerName || 'Balcão'} - ${data.items.length} itens.`,
                 url: '/cozinha'
             });
         } catch (error) {
@@ -138,12 +138,12 @@ export class OrderService {
             data: { status }
         });
 
-        // Notify When Order is Completed
+        // Notify ALL subscribers when order is completed
         if (status === 'COMPLETED') {
             try {
-                await notificationService.sendNotificationToRole(tenantId, 'CASHIER', {
+                await notificationService.sendNotificationToAllSubscribers(tenantId, {
                     title: '✅ Pedido Pronto!',
-                    body: `O Pedido #${order.id.split('-')[0].toUpperCase()} já pode ser entregue.`,
+                    body: `O Pedido #${order.id.slice(-4).toUpperCase()} já pode ser entregue.`,
                     url: '/pdv'
                 });
             } catch (error) {
